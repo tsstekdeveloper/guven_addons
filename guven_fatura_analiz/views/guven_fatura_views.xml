@@ -177,6 +177,13 @@
                             <!-- Logo Eşleştirme -->
                             <page string="Logo" name="logo">
                                 <group>
+                                    <group string="E-Fatura Bilgileri">
+                                        <field name="sender" readonly="1"/>
+                                        <field name="sender_name" readonly="1"/>
+                                        <field name="receiver" readonly="1"/>
+                                        <field name="receiver_name" readonly="1"/>
+                                        <field name="payable_amount_try" readonly="1" widget="float" options="{'digits': [16, 2]}"/>
+                                    </group>
                                     <group string="Logo Eşleşme Bilgileri">
                                         <field name="logo_fatura_count" readonly="1"/>
                                         <field name="logo_mssql_id" readonly="1"/>
