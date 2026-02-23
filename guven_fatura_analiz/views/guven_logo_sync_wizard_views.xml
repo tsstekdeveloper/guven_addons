@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- WIZARD FORM VIEW                                              -->
+        <!-- ============================================================ -->
+        <record id="guven_logo_sync_wizard_view_form" model="ir.ui.view">
+            <field name="name">guven.logo.sync.wizard.form</field>
+            <field name="model">guven.logo.sync.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Logo Veri Güncelleme">
+                    <group invisible="state != 'draft'">
+                        <group>
+                            <field name="date_to" invisible="1"/>
+                            <label for="date_from" string="Tarih Aralığı"/>
+                            <field name="date_from" nolabel="1"
+                                   widget="daterange"
+                                   options="{'end_date_field': 'date_to'}"/>
+                        </group>
+                        <group>
+                            <field name="company_names" string="Şirketler"/>
+                        </group>
+                    </group>
+                    <div invisible="state != 'done'">
+                        <field name="report_html" nolabel="1"/>
+                    </div>
+                    <field name="state" invisible="1"/>
+                    <field name="company_ids" invisible="1"/>
+                    <footer>
+                        <button string="Senkronize Et"
+                                name="action_sync"
+                                type="object"
+                                class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <button string="Kapat"
+                                name="action_close"
+                                type="object"
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- WIZARD ACTION                                                 -->
+        <!-- ============================================================ -->
+        <record id="action_guven_logo_sync_wizard" model="ir.actions.act_window">
+            <field name="name">Logo Veri Güncelleme</field>
+            <field name="res_model">guven.logo.sync.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="context">{'dialog_size': 'extra-large'}</field>
+        </record>
+
+    </data>
+</odoo>

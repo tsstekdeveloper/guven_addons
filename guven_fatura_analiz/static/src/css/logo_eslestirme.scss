@@ -1,0 +1,16 @@
+/* GİB >>> Logo Eşleştirme list view - row background colors */
+.o_logo_eslestirme {
+    /* Single match: light green background */
+    tr.text-success,
+    tr.text-success td {
+        background-color: #d4edda !important;
+        color: inherit !important;
+    }
+
+    /* No match or mismatch: light red background */
+    tr.text-danger,
+    tr.text-danger td {
+        background-color: #f8d7da !important;
+        color: inherit !important;
+    }
+}

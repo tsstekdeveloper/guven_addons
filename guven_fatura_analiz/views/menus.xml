@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Root Application Menu -->
+        <menuitem id="menu_fatura_analiz_root"
+                  name="Fatura Analiz"
+                  sequence="100"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"
+                  web_icon="guven_fatura_analiz,static/description/icon.png"/>
+
+        <!-- Company List Action -->
+        <record id="action_res_company_fatura_analiz" model="ir.actions.act_window">
+            <field name="name">Şirket Tanımları</field>
+            <field name="res_model">res.company</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('parent_id', '=', False)]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Şirket tanımı bulunamadı.
+                </p>
+                <p>
+                    E-Fatura ve Logo MSSQL ayarlarını yapılandırmak için bir şirket seçin.
+                </p>
+            </field>
+        </record>
+
+        <!-- Submenu: Faturalar (parent) -->
+        <menuitem id="menu_fatura_analiz_faturalar"
+                  name="Faturalar"
+                  parent="menu_fatura_analiz_root"
+                  sequence="5"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+        <!-- Submenu: GİB Fatura Listesi -->
+        <menuitem id="menu_fatura_analiz_fatura_listesi"
+                  name="GİB Fatura Listesi"
+                  parent="menu_fatura_analiz_faturalar"
+                  action="action_guven_fatura"
+                  sequence="5"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+        <!-- Submenu: Logo Fatura Listesi -->
+        <menuitem id="menu_fatura_analiz_logo_fatura_listesi"
+                  name="Logo Fatura Listesi"
+                  parent="menu_fatura_analiz_faturalar"
+                  action="action_guven_logo_fatura"
+                  sequence="6"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+        <!-- Submenu: GİB >>> Logo Eşleştirme -->
+        <menuitem id="menu_fatura_analiz_gib_logo_eslestirme"
+                  name="GİB &gt;&gt;&gt; Logo"
+                  parent="menu_fatura_analiz_faturalar"
+                  action="action_guven_fatura_logo_eslestirme"
+                  sequence="7"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+        <!-- Submenu: Veri Güncelleme (parent) -->
+        <menuitem id="menu_fatura_analiz_veri_guncelleme"
+                  name="Veri Güncelleme"
+                  parent="menu_fatura_analiz_root"
+                  sequence="7"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
+        <!-- Submenu: izibiz Veri Güncelleme -->
+        <menuitem id="menu_fatura_analiz_izibiz"
+                  name="izibiz Veri Güncelleme"
+                  parent="menu_fatura_analiz_veri_guncelleme"
+                  action="action_guven_fatura_sync_wizard"
+                  sequence="5"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
+        <!-- Submenu: Logo Veri Güncelleme -->
+        <menuitem id="menu_fatura_analiz_logo_sync"
+                  name="Logo Veri Güncelleme"
+                  parent="menu_fatura_analiz_veri_guncelleme"
+                  action="action_guven_logo_sync_wizard"
+                  sequence="10"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
+        <!-- Submenu: Company Definitions -->
+        <menuitem id="menu_fatura_analiz_sirket"
+                  name="Şirket Tanımları"
+                  parent="menu_fatura_analiz_root"
+                  action="action_res_company_fatura_analiz"
+                  sequence="10"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+    </data>
+</odoo>

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Inherit and extend the company form view -->
+        <record id="view_company_form_inherit_fatura_analiz" model="ir.ui.view">
+            <field name="name">res.company.form.inherit.fatura.analiz</field>
+            <field name="model">res.company</field>
+            <field name="inherit_id" ref="base.view_company_form"/>
+            <field name="arch" type="xml">
+
+                <!-- ============================================ -->
+                <!-- HIDE UNNECESSARY BASE FIELDS                 -->
+                <!-- ============================================ -->
+
+                <!-- Hide Branches tab -->
+                <page name="branches" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </page>
+
+                <!-- Hide social media group -->
+                <group name="social_media" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </group>
+
+                <!-- Hide color picker -->
+                <field name="color" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </field>
+
+                <!-- Hide company registry -->
+                <field name="company_registry" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </field>
+
+                <!-- Hide website -->
+                <field name="website" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </field>
+
+                <!-- ============================================ -->
+                <!-- NEW TABS: SOAP & MSSQL SETTINGS              -->
+                <!-- ============================================ -->
+
+                <!-- Computed field for group-based editability -->
+                <div class="oe_button_box" name="button_box" position="before">
+                    <field name="can_edit_fatura_settings" invisible="1"/>
+                </div>
+
+                <page name="general_info" position="after">
+
+                    <!-- E-Fatura SOAP Settings Tab -->
+                    <page string="E-Fatura SOAP Ayarları"
+                          name="efatura_soap"
+                          groups="guven_fatura_analiz.group_muhasebe_calisani">
+                        <group string="SOAP Bağlantı Bilgileri">
+                            <group>
+                                <field name="efatura_username"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="efatura_password"
+                                       password="True"
+                                       readonly="not can_edit_fatura_settings"/>
+                            </group>
+                            <group>
+                                <field name="efatura_ws"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="efatura_earsiv_ws"
+                                       readonly="not can_edit_fatura_settings"/>
+                            </group>
+                        </group>
+                        <group string="Senkronizasyon Ayarları">
+                            <group>
+                                <field name="efatura_sync_lookback_days"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="efatura_sync_cursor_date"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="efatura_sync_last_completed_date" readonly="1"/>
+                            </group>
+                        </group>
+                        <div>
+                            <button name="action_test_efatura_connection"
+                                    type="object"
+                                    string="Bağlantıyı Test Et"
+                                    class="btn-primary"
+                                    icon="fa-plug"
+                                    groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+                        </div>
+                    </page>
+
+                    <!-- Logo MSSQL Settings Tab -->
+                    <page string="Logo MSSQL Ayarları"
+                          name="logo_mssql"
+                          groups="guven_fatura_analiz.group_muhasebe_calisani">
+                        <group string="Firma / Sunucu Bilgileri">
+                            <group>
+                                <field name="logo_firma_kodu"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_mssql_server"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_mssql_port"
+                                       readonly="not can_edit_fatura_settings"/>
+                            </group>
+                            <group>
+                                <field name="logo_mssql_database"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_mssql_username"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_mssql_password"
+                                       password="True"
+                                       readonly="not can_edit_fatura_settings"/>
+                            </group>
+                        </group>
+                        <group string="Tablo Ayarları">
+                            <group>
+                                <field name="logo_invoice_table"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_clcard_table"
+                                       readonly="not can_edit_fatura_settings"/>
+                            </group>
+                        </group>
+                        <group string="Senkronizasyon">
+                            <group>
+                                <field name="logo_auto_sync"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_sync_lookback_days"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_sync_cursor_date"
+                                       readonly="not can_edit_fatura_settings"/>
+                                <field name="logo_sync_last_completed_date"
+                                       readonly="1"/>
+                            </group>
+                        </group>
+                        <div>
+                            <button name="action_test_logo_connection"
+                                    type="object"
+                                    string="Bağlantıyı Test Et"
+                                    class="btn-primary"
+                                    icon="fa-plug"
+                                    groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+                        </div>
+                    </page>
+
+                </page>
+
+            </field>
+        </record>
+
+    </data>
+</odoo>
