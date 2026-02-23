@@ -190,16 +190,8 @@
                                         <field name="logo_fatura_tarihi" readonly="1"/>
                                         <field name="logo_fatura_tutari" readonly="1" widget="float" options="{'digits': [16, 2]}"/>
                                     </group>
-                                    <group string="Karşılaştırma">
-                                        <field name="logo_fatura_vkn" readonly="1"/>
-                                        <field name="logo_fatura_tckn" readonly="1"/>
-                                        <field name="tutar_farki_var" readonly="1"/>
-                                        <field name="tutar_farki" readonly="1" widget="float" options="{'digits': [16, 2]}"/>
-                                        <field name="vkn_farkli" readonly="1"/>
-                                        <field name="tckn_farkli" readonly="1"/>
-                                        <field name="fatura_tarihi_farkli" readonly="1"/>
-                                    </group>
                                 </group>
+                                <field name="logo_karsilastirma_html" readonly="1" nolabel="1"/>
                                 <field name="logo_notes" readonly="1"/>
                                 <separator string="Eşleşen Logo Faturaları"/>
                                 <field name="logo_fatura_ids" readonly="1" nolabel="1">

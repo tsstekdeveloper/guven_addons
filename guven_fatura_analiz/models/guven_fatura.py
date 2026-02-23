@@ -176,6 +176,10 @@ class GuvenFatura(models.Model):
     vkn_farkli = fields.Boolean(string='VKN Farklı', default=False, copy=False)
     tckn_farkli = fields.Boolean(string='TCKN Farklı', default=False, copy=False)
     fatura_tarihi_farkli = fields.Boolean(string='Tarih Farklı', default=False, copy=False)
+    logo_karsilastirma_html = fields.Html(
+        string='Karşılaştırma', compute='_compute_logo_karsilastirma_html',
+        sanitize=False,
+    )
     logo_notes = fields.Text(string='Logo Eşleşme Notları', copy=False)
 
     # --- One2many İlişkileri ---
@@ -234,6 +238,72 @@ class GuvenFatura(models.Model):
             else:
                 # E-Fatura: sadece status_code bazlı
                 record.gvn_active = record.status_code not in self._EFATURA_INVALID_STATUS
+
+    @api.depends(
+        'logo_fatura_count', 'logo_fatura_vkn', 'logo_fatura_tckn',
+        'tutar_farki_var', 'tutar_farki', 'vkn_farkli', 'tckn_farkli',
+        'fatura_tarihi_farkli',
+    )
+    def _compute_logo_karsilastirma_html(self):
+        for rec in self:
+            if not rec.logo_fatura_count:
+                rec.logo_karsilastirma_html = False
+                continue
+            rec.logo_karsilastirma_html = rec._build_karsilastirma_html()
+
+    def _build_karsilastirma_html(self):
+        """Build compact comparison badge HTML."""
+        checks = []
+
+        # VKN
+        vkn_val = self.logo_fatura_vkn or '—'
+        if self.vkn_farkli:
+            checks.append(('VKN', vkn_val, '#ef4444', '#fef2f2'))
+        else:
+            checks.append(('VKN', vkn_val, '#10b981', '#f0fdf4'))
+
+        # TCKN
+        tckn_val = self.logo_fatura_tckn or '—'
+        if self.tckn_farkli:
+            checks.append(('TCKN', tckn_val, '#ef4444', '#fef2f2'))
+        else:
+            checks.append(('TCKN', tckn_val, '#10b981', '#f0fdf4'))
+
+        # Tutar farkı
+        if self.tutar_farki_var:
+            farki = f"{self.tutar_farki:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            checks.append(('Tutar Farkı', farki, '#f59e0b', '#fffbeb'))
+        else:
+            checks.append(('Tutar', 'Eşit', '#10b981', '#f0fdf4'))
+
+        # Tarih
+        if self.fatura_tarihi_farkli:
+            checks.append(('Tarih', 'Farklı', '#ef4444', '#fef2f2'))
+        else:
+            checks.append(('Tarih', 'Eşit', '#10b981', '#f0fdf4'))
+
+        badges = ''
+        for label, value, color, bg in checks:
+            icon = (
+                '<span style="margin-right:4px">&#10005;</span>'
+                if color in ('#ef4444', '#f59e0b')
+                else '<span style="margin-right:4px">&#10003;</span>'
+            )
+            badges += (
+                f'<span style="display:inline-flex;align-items:center;'
+                f'padding:4px 10px;margin:3px 4px;border-radius:6px;'
+                f'font-size:12px;font-weight:600;'
+                f'background:{bg};color:{color};'
+                f'border:1px solid {color}20">'
+                f'{icon}'
+                f'<span style="color:#64748b;font-weight:400;margin-right:4px">'
+                f'{label}:</span> {value}</span>'
+            )
+
+        return (
+            f'<div style="display:flex;flex-wrap:wrap;align-items:center;'
+            f'gap:2px;padding:4px 0">{badges}</div>'
+        )
 
     # ==================================================================
     # SOAP HELPERS
