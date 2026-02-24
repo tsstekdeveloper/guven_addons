@@ -87,9 +87,10 @@ class GuvenLogoSyncWizard(models.TransientModel):
                 continue
 
             try:
-                result = LogoFatura._sync_company(
-                    company, self.date_from, self.date_to,
-                )
+                with self.env.cr.savepoint():
+                    result = LogoFatura._sync_company(
+                        company, self.date_from, self.date_to,
+                    )
             except Exception as e:
                 _logger.exception("Logo sync error for %s", company.name)
                 log_lines.append(f"  HATA: {e}")
@@ -121,9 +122,10 @@ class GuvenLogoSyncWizard(models.TransientModel):
             log_lines.append("")
             log_lines.append("--- Logo Eşleştirme (GİB → Logo) ---")
             try:
-                match_stats = self.env['guven.fatura']._match_logo_invoices(
-                    self.date_from, self.date_to, match_company_ids,
-                ) or {}
+                with self.env.cr.savepoint():
+                    match_stats = self.env['guven.fatura']._match_logo_invoices(
+                        self.date_from, self.date_to, match_company_ids,
+                    ) or {}
                 log_lines.append(
                     f"  Taranan: {match_stats.get('total', 0)}, "
                     f"Tek eşleşme: {match_stats.get('matched_single', 0)}, "
@@ -140,9 +142,10 @@ class GuvenLogoSyncWizard(models.TransientModel):
             log_lines.append("")
             log_lines.append("--- Ters Eşleştirme (Logo → GİB) ---")
             try:
-                reverse_match_stats = self.env['guven.logo.fatura']._match_gib_invoices(
-                    self.date_from, self.date_to, match_company_ids,
-                ) or {}
+                with self.env.cr.savepoint():
+                    reverse_match_stats = self.env['guven.logo.fatura']._match_gib_invoices(
+                        self.date_from, self.date_to, match_company_ids,
+                    ) or {}
                 log_lines.append(
                     f"  Taranan: {reverse_match_stats.get('total', 0)}, "
                     f"Tek eşleşme: {reverse_match_stats.get('matched_single', 0)}, "
