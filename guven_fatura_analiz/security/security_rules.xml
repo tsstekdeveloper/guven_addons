@@ -32,5 +32,17 @@
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
 
+        <record id="guven_kdv2_report_comp_rule" model="ir.rule">
+            <field name="name">KDV-2 Raporu: şirket izolasyonu</field>
+            <field name="model_id" ref="model_guven_kdv2_report"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="guven_muhtasar_report_comp_rule" model="ir.rule">
+            <field name="name">Muhtasar Raporu: şirket izolasyonu</field>
+            <field name="model_id" ref="model_guven_muhtasar_report"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
     </data>
 </odoo>

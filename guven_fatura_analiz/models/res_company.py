@@ -244,6 +244,7 @@ class ResCompany(models.Model):
                 password=self.logo_mssql_password,
                 database=self.logo_mssql_database,
                 login_timeout=10,
+                charset='cp1254',
             )
             cursor = conn.cursor()
 

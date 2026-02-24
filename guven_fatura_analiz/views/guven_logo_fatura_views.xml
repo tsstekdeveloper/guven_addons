@@ -59,32 +59,78 @@
             <field name="arch" type="xml">
                 <form create="0" delete="0" edit="0">
                     <sheet>
-                        <group>
-                            <group string="Fatura Bilgileri">
-                                <field name="logo_id"/>
-                                <field name="fatura_no_1"/>
-                                <field name="fatura_no_2"/>
-                                <field name="fatura_tipi"/>
-                                <field name="iptal_durumu"/>
-                            </group>
-                            <group string="Tarih ve Tutar">
-                                <field name="fatura_tarihi_1"/>
-                                <field name="fatura_tarihi_2"/>
-                                <field name="fatura_tutari"/>
-                                <field name="para_birimi"/>
-                                <field name="kur"/>
-                                <field name="doviz_tutari"/>
-                            </group>
-                        </group>
-                        <group>
-                            <group string="Cari Bilgileri">
-                                <field name="vkn"/>
-                                <field name="tckn"/>
-                            </group>
-                            <group string="Diğer">
-                                <field name="company_id" groups="base.group_multi_company"/>
-                            </group>
-                        </group>
+                        <notebook>
+                            <page string="Genel" name="page_general">
+                                <group>
+                                    <group string="Fatura Bilgileri">
+                                        <field name="logo_id"/>
+                                        <field name="fatura_no_1"/>
+                                        <field name="fatura_no_2"/>
+                                        <field name="fatura_tipi"/>
+                                        <field name="iptal_durumu"/>
+                                    </group>
+                                    <group string="Tarih ve Tutar">
+                                        <field name="fatura_tarihi_1"/>
+                                        <field name="fatura_tarihi_2"/>
+                                        <field name="fatura_tutari"/>
+                                        <field name="para_birimi"/>
+                                        <field name="kur"/>
+                                        <field name="doviz_tutari"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <group string="Cari Bilgileri">
+                                        <field name="vkn"/>
+                                        <field name="tckn"/>
+                                    </group>
+                                    <group string="Diğer">
+                                        <field name="company_id" groups="base.group_multi_company"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="GİB Eşleştirme" name="page_gib_eslestirme">
+                                <group>
+                                    <group string="Logo Bilgileri">
+                                        <field name="fatura_no_1" string="Fatura No 1"/>
+                                        <field name="fatura_no_2" string="Fatura No 2"/>
+                                        <field name="vkn" string="Logo VKN"/>
+                                        <field name="tckn" string="Logo TCKN"/>
+                                        <field name="fatura_tarihi_1" string="Fatura Tarihi 1"/>
+                                        <field name="fatura_tarihi_2" string="Fatura Tarihi 2"/>
+                                        <field name="fatura_tutari" string="Logo Tutar"/>
+                                    </group>
+                                    <group string="GİB Eşleşme Bilgileri">
+                                        <field name="gib_fatura_count"/>
+                                        <field name="gib_fatura_no"/>
+                                        <field name="gib_fatura_tarihi"/>
+                                        <field name="gib_fatura_tutari" widget="float" options="{'digits': [16, 2]}"/>
+                                        <field name="gib_kimlik"/>
+                                        <field name="gib_kaynak"/>
+                                    </group>
+                                </group>
+                                <field name="gib_karsilastirma_html" nolabel="1"/>
+                                <separator string="Eşleşen GİB Faturaları"/>
+                                <field name="gib_fatura_ids" nolabel="1">
+                                    <list decoration-success="logo_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli"
+                                          decoration-danger="logo_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli">
+                                        <field name="invoice_id"/>
+                                        <field name="issue_date"/>
+                                        <field name="kaynak"/>
+                                        <field name="direction"/>
+                                        <field name="payable_amount_try" string="Tutar (TRY)" widget="float" options="{'digits': [16, 2]}"/>
+                                        <field name="sender"/>
+                                        <field name="receiver"/>
+                                        <field name="logo_fatura_count" string="Eş Sayısı"/>
+                                        <field name="tutar_farki_var" string="Tutar ✗" widget="boolean"/>
+                                        <field name="kimlik_farkli" string="Kimlik ✗" widget="boolean"/>
+                                        <field name="fatura_tarihi_farkli" string="Tarih ✗" widget="boolean"/>
+                                    </list>
+                                </field>
+                                <group>
+                                    <field name="gib_notes"/>
+                                </group>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
@@ -104,6 +150,128 @@
                     Logo ERP'den senkronize edilen faturalar burada listelenir.
                 </p>
             </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- GİB EŞLEŞTIRME — LIST VIEW (Logo → GİB)                     -->
+        <!-- ============================================================ -->
+        <record id="guven_logo_fatura_gib_eslestirme_view_list" model="ir.ui.view">
+            <field name="name">guven.logo.fatura.gib.eslestirme.list</field>
+            <field name="model">guven.logo.fatura</field>
+            <field name="arch" type="xml">
+                <list string="Logo → GİB Eşleştirme"
+                      class="o_gib_eslestirme"
+                      default_order="fatura_tarihi_1 desc, id desc"
+                      decoration-success="gib_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli"
+                      decoration-danger="gib_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli"
+                      create="0" delete="0">
+                    <field name="fatura_tipi"/>
+                    <field name="fatura_no_1"/>
+                    <field name="fatura_no_2"/>
+                    <field name="fatura_tarihi_1"/>
+                    <field name="fatura_tutari" string="Logo Tutar" sum="Toplam" widget="float" options="{'digits': [16, 2]}"/>
+                    <field name="gib_fatura_count" string="Eşleşme"/>
+                    <field name="tutar_farki_var" string="Tutar ✗" widget="boolean"/>
+                    <field name="tutar_farki" string="Tutar Farkı" widget="float" options="{'digits': [16, 2]}"/>
+                    <field name="kimlik_farkli" string="Kimlik ✗" widget="boolean"/>
+                    <field name="fatura_tarihi_farkli" string="Tarih ✗" widget="boolean"/>
+                    <field name="gib_fatura_tarihi"/>
+                    <field name="gib_fatura_tutari" string="GİB Tutar (TRY)" widget="float" options="{'digits': [16, 2]}"/>
+                    <field name="gib_kimlik"/>
+                    <field name="gib_kaynak"/>
+                    <field name="vkn"/>
+                    <field name="tckn"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- GİB EŞLEŞTIRME — SEARCH VIEW (Logo → GİB)                   -->
+        <!-- ============================================================ -->
+        <record id="guven_logo_fatura_gib_eslestirme_view_search" model="ir.ui.view">
+            <field name="name">guven.logo.fatura.gib.eslestirme.search</field>
+            <field name="model">guven.logo.fatura</field>
+            <field name="arch" type="xml">
+                <search string="Logo → GİB Eşleştirme Arama">
+                    <field name="fatura_no_1"/>
+                    <field name="fatura_no_2"/>
+                    <field name="vkn"/>
+                    <field name="tckn"/>
+                    <separator/>
+                    <filter name="filter_unmatched" string="Hiç Eşi Olmayanlar" domain="[('gib_fatura_count', '=', 0)]"/>
+                    <filter name="filter_single" string="Bire-Bir Eşleşenler" domain="[('gib_fatura_count', '=', 1)]"/>
+                    <filter name="filter_multi" string="Çoklu Eşi Olanlar" domain="[('gib_fatura_count', '&gt;', 1)]"/>
+                    <separator/>
+                    <filter name="filter_tutar_farki" string="Tutar Farkı" domain="[('tutar_farki_var', '=', True)]"/>
+                    <filter name="filter_kimlik_farkli" string="Kimlik Farklı" domain="[('kimlik_farkli', '=', True)]"/>
+                    <filter name="filter_tarih_farkli" string="Tarih Farklı" domain="[('fatura_tarihi_farkli', '=', True)]"/>
+                    <separator/>
+                    <filter name="filter_aktif" string="Aktif" domain="[('iptal_durumu', '=', '0')]"/>
+                    <filter name="filter_iptal" string="İptal" domain="[('iptal_durumu', '=', '1')]"/>
+                    <separator/>
+                    <filter name="filter_alis" string="Alış" domain="[('fatura_tipi', 'in', ['1', '3', '4', '13'])]"/>
+                    <filter name="filter_satis" string="Satış" domain="[('fatura_tipi', 'in', ['6', '7', '8', '9'])]"/>
+                    <separator/>
+                    <filter name="filter_month_01" string="Ocak"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=1, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_02" string="Şubat"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=2, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=2, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_03" string="Mart"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=3, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=3, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_04" string="Nisan"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=4, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=4, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_05" string="Mayıs"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=5, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=5, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_06" string="Haziran"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=6, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=6, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_07" string="Temmuz"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=7, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=7, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_08" string="Ağustos"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=8, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=8, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_09" string="Eylül"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=9, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=9, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_10" string="Ekim"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=10, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=10, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_11" string="Kasım"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=11, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=11, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_12" string="Aralık"
+                            domain="[('fatura_tarihi_1', '&gt;=', (context_today() + relativedelta(month=12, day=1)).strftime('%Y-%m-%d')),
+                                     ('fatura_tarihi_1', '&lt;=', (context_today() + relativedelta(month=12, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <group>
+                        <filter name="group_fatura_tipi" string="Fatura Tipi" context="{'group_by': 'fatura_tipi'}"/>
+                        <filter name="group_fatura_tarihi" string="Fatura Tarihi (Ay)" context="{'group_by': 'fatura_tarihi_1:month'}"/>
+                        <filter name="group_tutar_farki" string="Tutar Farkı Var" context="{'group_by': 'tutar_farki_var'}"/>
+                        <filter name="group_gib_kaynak" string="GİB Kaynak" context="{'group_by': 'gib_kaynak'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- GİB EŞLEŞTIRME — ACTION (Logo → GİB)                        -->
+        <!-- ============================================================ -->
+        <record id="action_guven_logo_fatura_gib_eslestirme" model="ir.actions.act_window">
+            <field name="name">Logo → GİB Eşleştirme</field>
+            <field name="res_model">guven.logo.fatura</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('guven_logo_fatura_gib_eslestirme_view_list')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('view_guven_logo_fatura_form')}),
+            ]"/>
+            <field name="search_view_id" ref="guven_logo_fatura_gib_eslestirme_view_search"/>
+            <field name="domain">[('iptal_durumu', '=', '0')]</field>
         </record>
 
     </data>

@@ -19,8 +19,14 @@
                     <filter name="filter_incoming" string="Gelen" domain="[('direction', '=', 'IN')]"/>
                     <filter name="filter_outgoing" string="Giden" domain="[('direction', '=', 'OUT')]"/>
                     <separator/>
-                    <filter name="filter_efatura" string="E-Fatura" domain="[('kaynak', '=', 'e-fatura')]"/>
-                    <filter name="filter_earsiv" string="E-Arşiv" domain="[('kaynak', '=', 'e-arsiv')]"/>
+                    <filter name="filter_efatura" string="E-Fatura" domain="[('kaynak', 'in', ['e-fatura-izibiz', 'e-fatura-qnbexcel'])]"/>
+                    <filter name="filter_earsiv" string="E-Arşiv" domain="[('kaynak', 'in', ['e-arsiv-izibiz', 'e-arsiv-gibexcel', 'e-arsiv-qnbexcel'])]"/>
+                    <separator/>
+                    <filter name="filter_kaynak_efatura_izibiz" string="E-Fatura (izibiz)" domain="[('kaynak', '=', 'e-fatura-izibiz')]"/>
+                    <filter name="filter_kaynak_earsiv_izibiz" string="E-Arşiv (izibiz)" domain="[('kaynak', '=', 'e-arsiv-izibiz')]"/>
+                    <filter name="filter_kaynak_earsiv_gibexcel" string="E-Arşiv (GİB Excel)" domain="[('kaynak', '=', 'e-arsiv-gibexcel')]"/>
+                    <filter name="filter_kaynak_efatura_qnbexcel" string="E-Fatura (QNB Excel)" domain="[('kaynak', '=', 'e-fatura-qnbexcel')]"/>
+                    <filter name="filter_kaynak_earsiv_qnbexcel" string="E-Arşiv (QNB Excel)" domain="[('kaynak', '=', 'e-arsiv-qnbexcel')]"/>
                     <group>
                         <filter name="group_kaynak" string="Kaynak" context="{'group_by': 'kaynak'}"/>
                         <filter name="group_direction" string="Yön" context="{'group_by': 'direction'}"/>
@@ -194,7 +200,8 @@
                                 <field name="logo_karsilastirma_html" readonly="1" nolabel="1"/>
                                 <separator string="Eşleşen Logo Faturaları"/>
                                 <field name="logo_fatura_ids" readonly="1" nolabel="1">
-                                    <list>
+                                    <list decoration-success="gib_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli"
+                                          decoration-danger="gib_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli">
                                         <field name="fatura_no_1"/>
                                         <field name="fatura_no_2"/>
                                         <field name="fatura_tipi"/>
@@ -203,6 +210,10 @@
                                         <field name="vkn"/>
                                         <field name="tckn"/>
                                         <field name="iptal_durumu"/>
+                                        <field name="gib_fatura_count" string="Eş Sayısı"/>
+                                        <field name="tutar_farki_var" string="Tutar ✗" widget="boolean"/>
+                                        <field name="kimlik_farkli" string="Kimlik ✗" widget="boolean"/>
+                                        <field name="fatura_tarihi_farkli" string="Tarih ✗" widget="boolean"/>
                                     </list>
                                 </field>
                                 <field name="logo_notes" readonly="1"/>
@@ -238,8 +249,8 @@
                 <list string="GİB → Logo Eşleştirme"
                       class="o_logo_eslestirme"
                       default_order="issue_date desc, invoice_id desc"
-                      decoration-success="logo_fatura_count == 1 and not tutar_farki_var and not vkn_farkli and not tckn_farkli and not fatura_tarihi_farkli"
-                      decoration-danger="logo_fatura_count != 1 or tutar_farki_var or vkn_farkli or tckn_farkli or fatura_tarihi_farkli"
+                      decoration-success="logo_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli"
+                      decoration-danger="logo_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli"
                       create="0" delete="0">
                     <field name="direction"/>
                     <field name="kaynak"/>
@@ -249,8 +260,7 @@
                     <field name="logo_fatura_count" string="Eşleşme"/>
                     <field name="tutar_farki_var" string="Tutar ✗" widget="boolean"/>
                     <field name="tutar_farki" string="Tutar Farkı" widget="float" options="{'digits': [16, 2]}"/>
-                    <field name="vkn_farkli" string="VKN ✗" widget="boolean"/>
-                    <field name="tckn_farkli" string="TCKN ✗" widget="boolean"/>
+                    <field name="kimlik_farkli" string="Kimlik ✗" widget="boolean"/>
                     <field name="fatura_tarihi_farkli" string="Tarih ✗" widget="boolean"/>
                     <field name="logo_fatura_tarihi"/>
                     <field name="logo_fatura_tutari" string="Logo Tutar" widget="float" options="{'digits': [16, 2]}"/>
@@ -277,15 +287,20 @@
                     <filter name="filter_multi" string="Çoklu Eşi Olanlar" domain="[('logo_fatura_count', '&gt;', 1)]"/>
                     <separator/>
                     <filter name="filter_tutar_farki" string="Tutar Farkı" domain="[('tutar_farki_var', '=', True)]"/>
-                    <filter name="filter_vkn_farkli" string="VKN Farklı" domain="[('vkn_farkli', '=', True)]"/>
-                    <filter name="filter_tckn_farkli" string="TCKN Farklı" domain="[('tckn_farkli', '=', True)]"/>
+                    <filter name="filter_kimlik_farkli" string="Kimlik Farklı" domain="[('kimlik_farkli', '=', True)]"/>
                     <filter name="filter_tarih_farkli" string="Tarih Farklı" domain="[('fatura_tarihi_farkli', '=', True)]"/>
                     <separator/>
                     <filter name="filter_incoming" string="Gelen" domain="[('direction', '=', 'IN')]"/>
                     <filter name="filter_outgoing" string="Giden" domain="[('direction', '=', 'OUT')]"/>
                     <separator/>
-                    <filter name="filter_efatura" string="E-Fatura" domain="[('kaynak', '=', 'e-fatura')]"/>
-                    <filter name="filter_earsiv" string="E-Arşiv" domain="[('kaynak', '=', 'e-arsiv')]"/>
+                    <filter name="filter_efatura" string="E-Fatura" domain="[('kaynak', 'in', ['e-fatura-izibiz', 'e-fatura-qnbexcel'])]"/>
+                    <filter name="filter_earsiv" string="E-Arşiv" domain="[('kaynak', 'in', ['e-arsiv-izibiz', 'e-arsiv-gibexcel', 'e-arsiv-qnbexcel'])]"/>
+                    <separator/>
+                    <filter name="filter_kaynak_efatura_izibiz" string="E-Fatura (izibiz)" domain="[('kaynak', '=', 'e-fatura-izibiz')]"/>
+                    <filter name="filter_kaynak_earsiv_izibiz" string="E-Arşiv (izibiz)" domain="[('kaynak', '=', 'e-arsiv-izibiz')]"/>
+                    <filter name="filter_kaynak_earsiv_gibexcel" string="E-Arşiv (GİB Excel)" domain="[('kaynak', '=', 'e-arsiv-gibexcel')]"/>
+                    <filter name="filter_kaynak_efatura_qnbexcel" string="E-Fatura (QNB Excel)" domain="[('kaynak', '=', 'e-fatura-qnbexcel')]"/>
+                    <filter name="filter_kaynak_earsiv_qnbexcel" string="E-Arşiv (QNB Excel)" domain="[('kaynak', '=', 'e-arsiv-qnbexcel')]"/>
                     <separator/>
                     <filter name="filter_month_01" string="Ocak"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),

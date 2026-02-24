@@ -40,8 +40,13 @@ class GuvenLogoSyncWizard(models.TransientModel):
     match_multi = fields.Integer(string='Çoklu Eşleşme', readonly=True)
     match_none = fields.Integer(string='Eşleşmeyen', readonly=True)
     match_tutar_farki = fields.Integer(string='Tutar Farkı', readonly=True)
-    match_vkn_farkli = fields.Integer(string='VKN Farklı', readonly=True)
-    match_tckn_farkli = fields.Integer(string='TCKN Farklı', readonly=True)
+    match_kimlik_farkli = fields.Integer(string='Kimlik Farklı', readonly=True)
+    reverse_match_total = fields.Integer(string='Taranan Logo Fatura', readonly=True)
+    reverse_match_single = fields.Integer(string='Tek Eşleşme (Ters)', readonly=True)
+    reverse_match_multi = fields.Integer(string='Çoklu Eşleşme (Ters)', readonly=True)
+    reverse_match_none = fields.Integer(string='Eşleşmeyen (Ters)', readonly=True)
+    reverse_match_tutar_farki = fields.Integer(string='Tutar Farkı (Ters)', readonly=True)
+    reverse_match_kimlik_farkli = fields.Integer(string='Kimlik Farklı (Ters)', readonly=True)
     report_html = fields.Html(
         string='Rapor', readonly=True,
         compute='_compute_report_html', sanitize=False,
@@ -109,12 +114,12 @@ class GuvenLogoSyncWizard(models.TransientModel):
                 **result,
             })
 
-        # Logo Eşleştirme
+        # Logo Eşleştirme (GİB → Logo)
         match_stats = {}
         match_company_ids = [c.id for c in self.company_ids if c.has_logo_credentials()]
         if match_company_ids:
             log_lines.append("")
-            log_lines.append("--- Logo Eşleştirme ---")
+            log_lines.append("--- Logo Eşleştirme (GİB → Logo) ---")
             try:
                 match_stats = self.env['guven.fatura']._match_logo_invoices(
                     self.date_from, self.date_to, match_company_ids,
@@ -129,6 +134,25 @@ class GuvenLogoSyncWizard(models.TransientModel):
                 _logger.exception("Logo matching error")
                 log_lines.append(f"  Eşleştirme HATASI: {e}")
 
+        # Ters Eşleştirme (Logo → GİB)
+        reverse_match_stats = {}
+        if match_company_ids:
+            log_lines.append("")
+            log_lines.append("--- Ters Eşleştirme (Logo → GİB) ---")
+            try:
+                reverse_match_stats = self.env['guven.logo.fatura']._match_gib_invoices(
+                    self.date_from, self.date_to, match_company_ids,
+                ) or {}
+                log_lines.append(
+                    f"  Taranan: {reverse_match_stats.get('total', 0)}, "
+                    f"Tek eşleşme: {reverse_match_stats.get('matched_single', 0)}, "
+                    f"Çoklu: {reverse_match_stats.get('matched_multi', 0)}, "
+                    f"Eşleşmeyen: {reverse_match_stats.get('unmatched', 0)}"
+                )
+            except Exception as e:
+                _logger.exception("Reverse matching error")
+                log_lines.append(f"  Ters eşleştirme HATASI: {e}")
+
         self.write({
             'state': 'done',
             'total_created': totals['created'],
@@ -140,8 +164,13 @@ class GuvenLogoSyncWizard(models.TransientModel):
             'match_multi': match_stats.get('matched_multi', 0),
             'match_none': match_stats.get('unmatched', 0),
             'match_tutar_farki': match_stats.get('tutar_farki', 0),
-            'match_vkn_farkli': match_stats.get('vkn_farkli', 0),
-            'match_tckn_farkli': match_stats.get('tckn_farkli', 0),
+            'match_kimlik_farkli': match_stats.get('kimlik_farkli', 0),
+            'reverse_match_total': reverse_match_stats.get('total', 0),
+            'reverse_match_single': reverse_match_stats.get('matched_single', 0),
+            'reverse_match_multi': reverse_match_stats.get('matched_multi', 0),
+            'reverse_match_none': reverse_match_stats.get('unmatched', 0),
+            'reverse_match_tutar_farki': reverse_match_stats.get('tutar_farki', 0),
+            'reverse_match_kimlik_farkli': reverse_match_stats.get('kimlik_farkli', 0),
             'log_messages': '\n'.join(log_lines),
             'company_results': json.dumps(company_data, ensure_ascii=False),
         })
@@ -166,7 +195,9 @@ class GuvenLogoSyncWizard(models.TransientModel):
         'state', 'total_created', 'total_updated', 'total_fetched',
         'total_deleted', 'company_results', 'date_from', 'date_to',
         'match_total', 'match_single', 'match_multi', 'match_none',
-        'match_tutar_farki', 'match_vkn_farkli', 'match_tckn_farkli',
+        'match_tutar_farki', 'match_kimlik_farkli',
+        'reverse_match_total', 'reverse_match_single', 'reverse_match_multi',
+        'reverse_match_none', 'reverse_match_tutar_farki', 'reverse_match_kimlik_farkli',
     )
     def _compute_report_html(self):
         for rec in self:
@@ -233,10 +264,8 @@ class GuvenLogoSyncWizard(models.TransientModel):
             anomalies = [
                 (self.match_tutar_farki, 'Tutar Farkı', '#f59e0b',
                  'E-fatura ve Logo tutarları arasında fark var'),
-                (self.match_vkn_farkli, 'VKN Farklı', '#ef4444',
-                 'VKN/TCKN uyumsuzluğu (VKN)'),
-                (self.match_tckn_farkli, 'TCKN Farklı', '#ef4444',
-                 'VKN/TCKN uyumsuzluğu (TCKN)'),
+                (self.match_kimlik_farkli, 'Kimlik Farklı', '#ef4444',
+                 'GİB VKN/TCKN ile Logo VKN/TCKN uyumsuzluğu'),
             ]
             for count, label, color, desc in anomalies:
                 if count > 0:
@@ -300,6 +329,85 @@ class GuvenLogoSyncWizard(models.TransientModel):
 </div>
 
 {anomaly_table}"""
+
+        # Build reverse matching section (Logo → GİB)
+        reverse_match_html = ''
+        if self.reverse_match_total > 0:
+            reverse_pct = (
+                round(self.reverse_match_single / self.reverse_match_total * 100)
+                if self.reverse_match_total else 0
+            )
+
+            # Anomaly rows
+            reverse_anomaly_rows = ''
+            reverse_anomalies = [
+                (self.reverse_match_tutar_farki, 'Tutar Farkı', '#f59e0b',
+                 'Logo ve GİB tutarları arasında fark var'),
+                (self.reverse_match_kimlik_farkli, 'Kimlik Farklı', '#ef4444',
+                 'Logo VKN/TCKN ile GİB VKN/TCKN uyumsuzluğu'),
+            ]
+            for count, label, color, desc in reverse_anomalies:
+                if count > 0:
+                    reverse_anomaly_rows += (
+                        '<tr>'
+                        f'<td style="text-align:left;padding-left:18px;font-weight:600">'
+                        f'<span style="display:inline-block;width:8px;height:8px;'
+                        f'border-radius:50%;background:{color};margin-right:8px"></span>'
+                        f'{label}</td>'
+                        f'<td><strong>{fmt(count)}</strong></td>'
+                        f'<td style="color:#64748b;text-align:left">{desc}</td>'
+                        '</tr>'
+                    )
+
+            reverse_anomaly_table = ''
+            if reverse_anomaly_rows:
+                reverse_anomaly_table = f"""\
+<div class="sr-section-title" style="margin-top:16px">Uyumsuzluklar</div>
+<table class="sr-table">
+    <thead>
+        <tr>
+            <th>Tür</th>
+            <th>Adet</th>
+            <th>Açıklama</th>
+        </tr>
+    </thead>
+    <tbody>
+        {reverse_anomaly_rows}
+    </tbody>
+</table>"""
+
+            reverse_match_html = f"""\
+<div style="border-top:2px solid #e2e8f0;margin:24px 0 20px;padding-top:0"></div>
+
+<div class="sr-header" style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#3b82f6 100%)">
+    <h2>Logo &rarr; GİB Ters Eslestirme Sonuclari</h2>
+    <div class="sr-date">{date_from} &mdash; {date_to}</div>
+</div>
+
+<div class="sr-cards">
+    <div class="sr-card" style="border-color:#2563eb">
+        <div class="sr-card-label">Taranan Logo Fatura</div>
+        <div class="sr-card-num" style="color:#1d4ed8">{fmt(self.reverse_match_total)}</div>
+        <div class="sr-card-sub">fatura</div>
+    </div>
+    <div class="sr-card" style="border-color:#10b981">
+        <div class="sr-card-label">Tek Eslesme</div>
+        <div class="sr-card-num" style="color:#059669">{fmt(self.reverse_match_single)}</div>
+        <div class="sr-card-sub">%{reverse_pct} basari</div>
+    </div>
+    <div class="sr-card" style="border-color:#f59e0b">
+        <div class="sr-card-label">Coklu Eslesme</div>
+        <div class="sr-card-num" style="color:#d97706">{fmt(self.reverse_match_multi)}</div>
+        <div class="sr-card-sub">fatura</div>
+    </div>
+    <div class="sr-card" style="border-color:#ef4444">
+        <div class="sr-card-label">Eslesmeyen</div>
+        <div class="sr-card-num" style="color:#dc2626">{fmt(self.reverse_match_none)}</div>
+        <div class="sr-card-sub">fatura</div>
+    </div>
+</div>
+
+{reverse_anomaly_table}"""
 
         return f"""\
 <div class="sr-wrap">
@@ -499,4 +607,6 @@ class GuvenLogoSyncWizard(models.TransientModel):
 </table>
 
 {match_html}
+
+{reverse_match_html}
 </div>"""

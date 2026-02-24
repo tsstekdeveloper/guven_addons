@@ -1,6 +1,6 @@
 {
     'name': 'Güven Hastanesi Fatura Analiz Uygulaması',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Accounting',
     'summary': 'E-Fatura analiz ve takip modülü',
     'description': """
@@ -23,6 +23,9 @@
         'views/guven_fatura_sync_wizard_views.xml',
         'views/guven_logo_fatura_views.xml',
         'views/guven_logo_sync_wizard_views.xml',
+        'views/guven_kdv2_views.xml',
+        'views/guven_muhtasar_views.xml',
+        'views/guven_earsiv_import_wizard_views.xml',
         'views/menus.xml',
         'data/cron_data.xml',
     ],

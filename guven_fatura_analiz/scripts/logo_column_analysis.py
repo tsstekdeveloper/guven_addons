@@ -14,7 +14,7 @@ conn = pymssql.connect(
     user=creds['username'],
     password=creds['password'],
     database=creds['database'],
-    timeout=30, login_timeout=30, charset='UTF-8',
+    timeout=30, login_timeout=30, charset='cp1254',
 )
 cursor = conn.cursor()
 
@@ -62,7 +62,7 @@ print("\n=== ÖRNEK FATURA EŞLEŞTİRME ===")
 # Giden faturalar (OUT) - Ankara Güven
 sample_out = Fatura.search([
     ('company_id', '=', 2),
-    ('kaynak', '=', 'e-fatura'),
+    ('kaynak', '=', 'e-fatura-izibiz'),
     ('direction', '=', 'OUT'),
     ('issue_date', '!=', False),
     ('details_received', '=', True),
@@ -71,7 +71,7 @@ sample_out = Fatura.search([
 # Gelen faturalar (IN) - Ankara Güven
 sample_in = Fatura.search([
     ('company_id', '=', 2),
-    ('kaynak', '=', 'e-fatura'),
+    ('kaynak', '=', 'e-fatura-izibiz'),
     ('direction', '=', 'IN'),
     ('issue_date', '!=', False),
     ('details_received', '=', True),

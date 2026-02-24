@@ -56,6 +56,37 @@
                   sequence="7"
                   groups="guven_fatura_analiz.group_muhasebe_calisani"/>
 
+        <!-- Submenu: Logo >>> GİB Eşleştirme -->
+        <menuitem id="menu_fatura_analiz_logo_gib_eslestirme"
+                  name="Logo &gt;&gt;&gt; GİB"
+                  parent="menu_fatura_analiz_faturalar"
+                  action="action_guven_logo_fatura_gib_eslestirme"
+                  sequence="8"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+        <!-- Submenu: Raporlar (parent) -->
+        <menuitem id="menu_fatura_analiz_raporlar"
+                  name="Raporlar"
+                  parent="menu_fatura_analiz_root"
+                  sequence="6"
+                  groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+        <!-- Submenu: KDV-2 Listesi -->
+        <menuitem id="menu_fatura_analiz_kdv2"
+                  name="KDV-2 Listesi"
+                  parent="menu_fatura_analiz_raporlar"
+                  action="action_guven_kdv2_wizard"
+                  sequence="20"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
+        <!-- Submenu: Muhtasar -->
+        <menuitem id="menu_fatura_analiz_muhtasar"
+                  name="Muhtasar"
+                  parent="menu_fatura_analiz_raporlar"
+                  action="action_guven_muhtasar_wizard"
+                  sequence="30"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
         <!-- Submenu: Veri Güncelleme (parent) -->
         <menuitem id="menu_fatura_analiz_veri_guncelleme"
                   name="Veri Güncelleme"
@@ -77,6 +108,14 @@
                   parent="menu_fatura_analiz_veri_guncelleme"
                   action="action_guven_logo_sync_wizard"
                   sequence="10"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
+        <!-- Submenu: E-Arşiv GİB Excel İçeri Al -->
+        <menuitem id="menu_fatura_analiz_earsiv_import"
+                  name="E-Arşiv GİB Excel İçeri Al"
+                  parent="menu_fatura_analiz_veri_guncelleme"
+                  action="action_guven_earsiv_import_wizard"
+                  sequence="15"
                   groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
 
         <!-- Submenu: Company Definitions -->

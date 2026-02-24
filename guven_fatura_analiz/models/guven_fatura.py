@@ -75,7 +75,11 @@ class GuvenFatura(models.Model):
         default=lambda self: self.env.company, ondelete='restrict', index=True,
     )
     kaynak = fields.Selection(
-        [('e-fatura', 'E-Fatura'), ('e-arsiv', 'E-Arşiv')],
+        [('e-fatura-izibiz', 'E-Fatura (izibiz)'),
+         ('e-arsiv-izibiz', 'E-Arşiv (izibiz)'),
+         ('e-arsiv-gibexcel', 'E-Arşiv (GİB Excel)'),
+         ('e-fatura-qnbexcel', 'E-Fatura (QNB Excel)'),
+         ('e-arsiv-qnbexcel', 'E-Arşiv (QNB Excel)')],
         string='Kaynak', required=True, index=True,
     )
     direction = fields.Selection(
@@ -173,8 +177,7 @@ class GuvenFatura(models.Model):
     logo_fatura_tckn = fields.Char(string='Logo TCKN', size=11, copy=False)
     tutar_farki_var = fields.Boolean(string='Tutar Farkı Var', default=False, copy=False)
     tutar_farki = fields.Float(string='Tutar Farkı', digits=(16, 8), copy=False)
-    vkn_farkli = fields.Boolean(string='VKN Farklı', default=False, copy=False)
-    tckn_farkli = fields.Boolean(string='TCKN Farklı', default=False, copy=False)
+    kimlik_farkli = fields.Boolean(string='Kimlik Farklı', default=False, copy=False)
     fatura_tarihi_farkli = fields.Boolean(string='Tarih Farklı', default=False, copy=False)
     logo_karsilastirma_html = fields.Html(
         string='Karşılaştırma', compute='_compute_logo_karsilastirma_html',
@@ -222,7 +225,7 @@ class GuvenFatura(models.Model):
                 record.gvn_active = False
                 continue
 
-            if record.kaynak == 'e-arsiv':
+            if record.kaynak and record.kaynak.startswith('e-arsiv'):
                 # E-Arşiv: iptal kaydı, IPTAL profili, belirli status kodları
                 # veya kendisine bağlı iptal kaydı varsa → geçersiz
                 if record.is_cancellation:
@@ -241,7 +244,7 @@ class GuvenFatura(models.Model):
 
     @api.depends(
         'logo_fatura_count', 'logo_fatura_vkn', 'logo_fatura_tckn',
-        'tutar_farki_var', 'tutar_farki', 'vkn_farkli', 'tckn_farkli',
+        'tutar_farki_var', 'tutar_farki', 'kimlik_farkli',
         'fatura_tarihi_farkli',
     )
     def _compute_logo_karsilastirma_html(self):
@@ -255,19 +258,12 @@ class GuvenFatura(models.Model):
         """Build compact comparison badge HTML."""
         checks = []
 
-        # VKN
-        vkn_val = self.logo_fatura_vkn or '—'
-        if self.vkn_farkli:
-            checks.append(('VKN', vkn_val, '#ef4444', '#fef2f2'))
+        # Kimlik (VKN/TCKN birleşik)
+        if self.kimlik_farkli:
+            checks.append(('Kimlik', 'Farklı', '#ef4444', '#fef2f2'))
         else:
-            checks.append(('VKN', vkn_val, '#10b981', '#f0fdf4'))
-
-        # TCKN
-        tckn_val = self.logo_fatura_tckn or '—'
-        if self.tckn_farkli:
-            checks.append(('TCKN', tckn_val, '#ef4444', '#fef2f2'))
-        else:
-            checks.append(('TCKN', tckn_val, '#10b981', '#f0fdf4'))
+            logo_kimlik = self.logo_fatura_vkn or self.logo_fatura_tckn or '—'
+            checks.append(('Kimlik', logo_kimlik, '#10b981', '#f0fdf4'))
 
         # Tutar farkı
         if self.tutar_farki_var:
@@ -580,7 +576,7 @@ class GuvenFatura(models.Model):
                     'status_description': h.get('STATUS_DESCRIPTION'),
                     'response_code': h.get('RESPONSE_CODE'),
                     'direction': direction,
-                    'kaynak': 'e-fatura',
+                    'kaynak': 'e-fatura-izibiz',
                     'company_id': company.id,
                 }
 
@@ -606,7 +602,7 @@ class GuvenFatura(models.Model):
                 # Upsert
                 existing = self.search([
                     ('uuid', '=', uuid),
-                    ('kaynak', '=', 'e-fatura'),
+                    ('kaynak', '=', 'e-fatura-izibiz'),
                     ('company_id', '=', company.id),
                 ], limit=1)
                 if existing:
@@ -638,7 +634,7 @@ class GuvenFatura(models.Model):
 
         search_domain = [
             ('invoice_id', '=', invoice_id),
-            ('kaynak', '=', 'e-arsiv'),
+            ('kaynak', '=', 'e-arsiv-izibiz'),
             ('is_cancellation', '=', False),
             ('company_id', '=', company.id),
         ]
@@ -733,7 +729,7 @@ class GuvenFatura(models.Model):
                     'invoice_type_code': validated_type,
                     'status_code': h.get('STATUS_CODE') or h.get('STATUS'),
                     'direction': 'OUT',
-                    'kaynak': 'e-arsiv',
+                    'kaynak': 'e-arsiv-izibiz',
                     'company_id': company.id,
                     'is_cancellation': False,
                 }
@@ -756,7 +752,7 @@ class GuvenFatura(models.Model):
                 # Upsert — iptal edilmiş kayıtları normal flow'da güncelleme
                 existing = self.search([
                     ('uuid', '=', uuid),
-                    ('kaynak', '=', 'e-arsiv'),
+                    ('kaynak', '=', 'e-arsiv-izibiz'),
                     ('company_id', '=', company.id),
                 ], limit=1)
                 if existing:
@@ -791,7 +787,7 @@ class GuvenFatura(models.Model):
                     'invoice_type_code': validated_type,
                     'status_code': h.get('STATUS_CODE') or h.get('STATUS'),
                     'direction': 'OUT',
-                    'kaynak': 'e-arsiv',
+                    'kaynak': 'e-arsiv-izibiz',
                     'company_id': company.id,
                     'is_cancellation': True,
                 }
@@ -810,7 +806,7 @@ class GuvenFatura(models.Model):
 
                 existing_cancel = self.search([
                     ('uuid', '=', uuid),
-                    ('kaynak', '=', 'e-arsiv'),
+                    ('kaynak', '=', 'e-arsiv-izibiz'),
                     ('company_id', '=', company.id),
                 ], limit=1)
 
@@ -1382,7 +1378,7 @@ class GuvenFatura(models.Model):
         finally:
             elapsed = time.time() - t0
             remaining = self.sudo()._read_group(
-                [('details_received', '=', False), ('kaynak', '=', 'e-fatura')],
+                [('details_received', '=', False), ('kaynak', '=', 'e-fatura-izibiz')],
                 groupby=['company_id'],
                 aggregates=['__count'],
             )
@@ -1404,7 +1400,7 @@ class GuvenFatura(models.Model):
 
         # Bekleyen faturası olan şirketleri bul
         company_groups = self.sudo()._read_group(
-            [('details_received', '=', False), ('kaynak', '=', 'e-fatura')],
+            [('details_received', '=', False), ('kaynak', '=', 'e-fatura-izibiz')],
             groupby=['company_id'],
             aggregates=['__count'],
         )
@@ -1418,7 +1414,7 @@ class GuvenFatura(models.Model):
             # Her şirket için ayrı 100'er fatura çek
             inv_set = self.search([
                 ('details_received', '=', False),
-                ('kaynak', '=', 'e-fatura'),
+                ('kaynak', '=', 'e-fatura-izibiz'),
                 ('company_id', '=', company.id),
             ], order='issue_date ASC', limit=BATCH_SIZE)
             try:
@@ -1469,7 +1465,7 @@ class GuvenFatura(models.Model):
         finally:
             elapsed = time.time() - t0
             remaining = self.sudo()._read_group(
-                [('details_received', '=', False), ('kaynak', '=', 'e-arsiv')],
+                [('details_received', '=', False), ('kaynak', '=', 'e-arsiv-izibiz')],
                 groupby=['company_id'],
                 aggregates=['__count'],
             )
@@ -1491,7 +1487,7 @@ class GuvenFatura(models.Model):
 
         # Bekleyen faturası olan şirketleri bul
         company_groups = self.sudo()._read_group(
-            [('details_received', '=', False), ('kaynak', '=', 'e-arsiv')],
+            [('details_received', '=', False), ('kaynak', '=', 'e-arsiv-izibiz')],
             groupby=['company_id'],
             aggregates=['__count'],
         )
@@ -1505,7 +1501,7 @@ class GuvenFatura(models.Model):
             # Her şirket için ayrı 100'er fatura çek
             inv_set = self.search([
                 ('details_received', '=', False),
-                ('kaynak', '=', 'e-arsiv'),
+                ('kaynak', '=', 'e-arsiv-izibiz'),
                 ('company_id', '=', company.id),
             ], order='issue_date ASC', limit=BATCH_SIZE)
             try:
@@ -1649,19 +1645,22 @@ class GuvenFatura(models.Model):
         farki = efatura_tutar - logo_tutar
         tutar_farki_var = abs(farki) > 0.005
 
-        # VKN/TCKN fark analizi
+        # Kimlik fark analizi (GIB VKN/TCKN aynı alanda → Logo VKN veya TCKN'ye eşitse OK)
         if fatura.direction == 'IN':
-            efatura_vkn = (fatura.sender or '').strip()
+            gib_kimlik = (fatura.sender or '').strip()
         elif fatura.direction == 'OUT':
-            efatura_vkn = (fatura.receiver or '').strip()
+            gib_kimlik = (fatura.receiver or '').strip()
         else:
-            efatura_vkn = ''
+            gib_kimlik = ''
 
         logo_vkn = (lr.vkn or '').strip()
         logo_tckn = (lr.tckn or '').strip()
 
-        vkn_farkli = bool(efatura_vkn and logo_vkn and efatura_vkn != logo_vkn)
-        tckn_farkli = bool(efatura_vkn and logo_tckn and efatura_vkn != logo_tckn)
+        kimlik_eslesti = (
+            (logo_vkn and gib_kimlik == logo_vkn)
+            or (logo_tckn and gib_kimlik == logo_tckn)
+        )
+        kimlik_farkli = bool(gib_kimlik and (logo_vkn or logo_tckn) and not kimlik_eslesti)
 
         # Tarih farkı
         logo_tarihi = lr.fatura_tarihi_1 or lr.fatura_tarihi_2
@@ -1672,10 +1671,8 @@ class GuvenFatura(models.Model):
 
         if tutar_farki_var:
             stats['tutar_farki'] += 1
-        if vkn_farkli:
-            stats['vkn_farkli'] += 1
-        if tckn_farkli:
-            stats['tckn_farkli'] += 1
+        if kimlik_farkli:
+            stats['kimlik_farkli'] += 1
         if fatura_tarihi_farkli:
             stats['fatura_tarihi_farkli'] += 1
 
@@ -1689,8 +1686,7 @@ class GuvenFatura(models.Model):
             'logo_fatura_tckn': logo_tckn or False,
             'tutar_farki_var': tutar_farki_var,
             'tutar_farki': round(farki, 2),
-            'vkn_farkli': vkn_farkli,
-            'tckn_farkli': tckn_farkli,
+            'kimlik_farkli': kimlik_farkli,
             'fatura_tarihi_farkli': fatura_tarihi_farkli,
             'logo_notes': False,
         })
@@ -1711,8 +1707,7 @@ class GuvenFatura(models.Model):
             'matched_multi': 0,
             'unmatched': 0,
             'tutar_farki': 0,
-            'vkn_farkli': 0,
-            'tckn_farkli': 0,
+            'kimlik_farkli': 0,
             'fatura_tarihi_farkli': 0,
         }
 
@@ -1769,8 +1764,7 @@ class GuvenFatura(models.Model):
                     'logo_fatura_tckn': False,
                     'tutar_farki_var': False,
                     'tutar_farki': 0.0,
-                    'vkn_farkli': False,
-                    'tckn_farkli': False,
+                    'kimlik_farkli': False,
                     'fatura_tarihi_farkli': False,
                     'logo_notes': False,
                 })
@@ -1789,7 +1783,11 @@ class GuvenFatura(models.Model):
                     gib_vkn = (fatura.receiver or '').strip()
 
                 if gib_vkn:
-                    vkn_filtered = [lr for lr in matches if (lr.vkn or '').strip() == gib_vkn]
+                    vkn_filtered = [
+                        lr for lr in matches
+                        if (lr.vkn or '').strip() == gib_vkn
+                        or (lr.tckn or '').strip() == gib_vkn
+                    ]
                 else:
                     vkn_filtered = []
 
@@ -1824,8 +1822,7 @@ class GuvenFatura(models.Model):
                         'logo_fatura_tckn': False,
                         'tutar_farki_var': False,
                         'tutar_farki': 0.0,
-                        'vkn_farkli': False,
-                        'tckn_farkli': False,
+                        'kimlik_farkli': False,
                         'fatura_tarihi_farkli': False,
                         'logo_notes': '\n'.join(lines),
                     })

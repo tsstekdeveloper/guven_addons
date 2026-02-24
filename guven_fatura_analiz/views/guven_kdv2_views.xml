@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- KDV-2 Wizard Form View -->
+    <record id="view_guven_kdv2_wizard_form" model="ir.ui.view">
+        <field name="name">guven.kdv2.wizard.form</field>
+        <field name="model">guven.kdv2.wizard</field>
+        <field name="arch" type="xml">
+            <form string="KDV-2 Listesi Parametreleri">
+                <group>
+                    <group>
+                        <field name="month" widget="selection"/>
+                        <field name="year"/>
+                    </group>
+                </group>
+                <footer>
+                    <button string="Listele" name="action_generate_report" type="object" class="oe_highlight"/>
+                    <button string="Iptal" class="oe_link" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- KDV-2 Report List View -->
+    <record id="view_guven_kdv2_report_list" model="ir.ui.view">
+        <field name="name">guven.kdv2.report.list</field>
+        <field name="model">guven.kdv2.report</field>
+        <field name="arch" type="xml">
+            <list string="KDV-2 Listesi" default_order="kaynak_modul,fis_no" create="false" edit="false" delete="false">
+                <field name="logo_id" optional="hide"/>
+                <field name="ay" optional="hide"/>
+                <field name="yil" optional="hide"/>
+                <field name="fis_no" optional="show"/>
+                <field name="proje" optional="show"/>
+                <field name="kebir_hesap_kodu" optional="show"/>
+                <field name="kebir_hesap_adi" optional="show"/>
+                <field name="hesap_kodu" optional="show"/>
+                <field name="hesap_adi" optional="show"/>
+                <field name="masraf_merkezi" optional="show"/>
+                <field name="kaynak_modul" optional="show"/>
+                <field name="aciklama" optional="show"/>
+                <field name="fis_aciklama" optional="show"/>
+                <field name="cari" optional="show"/>
+                <field name="cari_vergi_no" optional="show"/>
+                <field name="cari_unvan" optional="show"/>
+                <field name="cari_adresi" optional="show"/>
+                <field name="adi" optional="show"/>
+                <field name="soy_adi" optional="show"/>
+                <field name="tckn" optional="show"/>
+                <field name="tevkifat_oran" optional="show"/>
+                <field name="tutar_yerel" sum="Toplam Tutar" optional="show"/>
+                <field name="kdv_tutar" sum="Toplam KDV" optional="show"/>
+                <field name="tevkif_edilen_kdv_tutari" sum="Toplam Tevkifat" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- KDV-2 Report Search View -->
+    <record id="view_guven_kdv2_report_search" model="ir.ui.view">
+        <field name="name">guven.kdv2.report.search</field>
+        <field name="model">guven.kdv2.report</field>
+        <field name="arch" type="xml">
+            <search string="KDV-2 Listesi Arama">
+                <field name="fis_no"/>
+                <field name="cari_unvan"/>
+                <field name="hesap_kodu"/>
+                <field name="hesap_adi"/>
+                <field name="aciklama"/>
+                <separator/>
+                <filter string="Satinalma" name="satin_alma" domain="[('kaynak_modul', '=', '2 Satinalma')]"/>
+                <filter string="Satis" name="satis" domain="[('kaynak_modul', '=', '3 Satis')]"/>
+                <filter string="Cari Hesap" name="cari_hesap" domain="[('kaynak_modul', '=', '4 Cari Hesap')]"/>
+                <separator/>
+                <filter string="Tevkifatli" name="tevkifatli" domain="[('tevkifat_oran', '!=', False)]"/>
+                <group>
+                    <filter name="group_by_modul" string="Kaynak Modul" context="{'group_by':'kaynak_modul'}"/>
+                    <filter name="group_by_kebir" string="Kebir Hesap" context="{'group_by':'kebir_hesap_kodu'}"/>
+                    <filter name="group_by_hesap" string="Hesap Kodu" context="{'group_by':'hesap_kodu'}"/>
+                    <filter name="group_by_proje" string="Proje" context="{'group_by':'proje'}"/>
+                    <filter name="group_by_tevkifat" string="Tevkifat Orani" context="{'group_by':'tevkifat_oran'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- KDV-2 Wizard Action -->
+    <record id="action_guven_kdv2_wizard" model="ir.actions.act_window">
+        <field name="name">KDV-2 Listesi</field>
+        <field name="res_model">guven.kdv2.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- KDV-2 Report Action -->
+    <record id="action_guven_kdv2_report" model="ir.actions.act_window">
+        <field name="name">KDV-2 Listesi Sonuclari</field>
+        <field name="res_model">guven.kdv2.report</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_guven_kdv2_report_search"/>
+        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Muhtasar Report List View -->
+    <record id="view_guven_muhtasar_report_list" model="ir.ui.view">
+        <field name="name">guven.muhtasar.report.list</field>
+        <field name="model">guven.muhtasar.report</field>
+        <field name="arch" type="xml">
+            <list string="Muhtasar Listesi" default_order="tarih, fis_no" create="false" edit="false" delete="false">
+                <field name="tarih" optional="show"/>
+                <field name="fis_no" optional="show"/>
+                <field name="odenecek_gelir_vergileri" optional="show"/>
+                <field name="vergi_turu" optional="show"/>
+                <field name="vergi" optional="show"/>
+                <field name="cari" optional="show"/>
+                <field name="cari_vergi_no" optional="show"/>
+                <field name="cari_unvan1" optional="show"/>
+                <field name="kimlik_no" optional="show"/>
+                <field name="adi" optional="show"/>
+                <field name="soyadi" optional="show"/>
+                <field name="tutar_yerel" sum="Toplam" optional="show"/>
+                <field name="hesap_kodu" optional="show"/>
+                <field name="hesap_adi" optional="show"/>
+                <field name="masraf_merkezi" optional="show"/>
+                <field name="kaynak_modul" optional="show"/>
+                <field name="ay" optional="hide"/>
+                <field name="yil" optional="hide"/>
+                <field name="islem" optional="hide"/>
+                <field name="is_yeri" optional="hide"/>
+                <field name="bolum" optional="hide"/>
+                <field name="proje" optional="hide"/>
+                <field name="kebir_hesabi_kodu" optional="hide"/>
+                <field name="kebir_hesabi_adi" optional="hide"/>
+                <field name="tutar" optional="hide"/>
+                <field name="aciklama" optional="hide"/>
+                <field name="fis_aciklama" optional="hide"/>
+                <field name="hareket_yonu" optional="hide"/>
+                <field name="iptal" optional="hide"/>
+                <field name="belge_turu" optional="hide"/>
+                <field name="cari_unvan2" optional="hide"/>
+                <field name="fatura_belge_no" optional="hide"/>
+                <field name="fatura_no" optional="hide"/>
+                <field name="adres1" optional="hide"/>
+                <field name="ulke" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Muhtasar Report Form View -->
+    <record id="view_guven_muhtasar_report_form" model="ir.ui.view">
+        <field name="name">guven.muhtasar.report.form</field>
+        <field name="model">guven.muhtasar.report</field>
+        <field name="arch" type="xml">
+            <form string="Muhtasar Detayi" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group string="Genel Bilgiler">
+                            <field name="tarih"/>
+                            <field name="ay"/>
+                            <field name="yil"/>
+                            <field name="fis_no"/>
+                            <field name="islem"/>
+                            <field name="hareket_yonu"/>
+                            <field name="iptal"/>
+                            <field name="belge_turu"/>
+                        </group>
+                        <group string="Vergi Bilgileri">
+                            <field name="odenecek_gelir_vergileri"/>
+                            <field name="vergi_turu"/>
+                            <field name="vergi"/>
+                            <field name="tutar"/>
+                            <field name="tutar_yerel"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Hesap Bilgileri">
+                            <field name="kebir_hesabi_kodu"/>
+                            <field name="kebir_hesabi_adi"/>
+                            <field name="hesap_kodu"/>
+                            <field name="hesap_adi"/>
+                            <field name="masraf_merkezi"/>
+                            <field name="kaynak_modul"/>
+                        </group>
+                        <group string="Organizasyon">
+                            <field name="is_yeri"/>
+                            <field name="bolum"/>
+                            <field name="proje"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Cari Bilgileri">
+                            <field name="cari"/>
+                            <field name="cari_vergi_no"/>
+                            <field name="cari_unvan1"/>
+                            <field name="cari_unvan2"/>
+                            <field name="kimlik_no"/>
+                            <field name="adi"/>
+                            <field name="soyadi"/>
+                        </group>
+                        <group string="Fatura Bilgileri">
+                            <field name="fatura_belge_no"/>
+                            <field name="fatura_no"/>
+                            <field name="adres1"/>
+                            <field name="ulke"/>
+                        </group>
+                    </group>
+                    <group string="Aciklamalar">
+                        <field name="aciklama"/>
+                        <field name="fis_aciklama"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Muhtasar Report Search View -->
+    <record id="view_guven_muhtasar_report_search" model="ir.ui.view">
+        <field name="name">guven.muhtasar.report.search</field>
+        <field name="model">guven.muhtasar.report</field>
+        <field name="arch" type="xml">
+            <search string="Muhtasar Ara">
+                <field name="fis_no"/>
+                <field name="cari"/>
+                <field name="cari_vergi_no"/>
+                <field name="cari_unvan1"/>
+                <field name="hesap_kodu"/>
+                <field name="hesap_adi"/>
+                <separator/>
+                <filter string="Ucret Gelir Vergisi" name="ucret_gelir" domain="[('odenecek_gelir_vergileri', '=', 'UCRET GELIR VERGISI')]"/>
+                <filter string="Kira Gelir Vergisi" name="kira_gelir" domain="[('odenecek_gelir_vergileri', '=', 'KIRA GELIR VERGISI')]"/>
+                <filter string="S.M Makbuzu" name="sm_makbuzu" domain="[('vergi_turu', '=', '022')]"/>
+                <separator/>
+                <filter string="Iptal Edilmemis" name="not_cancelled" domain="[('iptal', '=', 'Hayir')]"/>
+                <filter string="Iptal Edilmis" name="cancelled" domain="[('iptal', '=', 'Evet')]"/>
+                <group>
+                    <filter string="Vergi Turu" name="group_vergi_turu" context="{'group_by': 'vergi_turu'}"/>
+                    <filter string="Hesap Kodu" name="group_hesap_kodu" context="{'group_by': 'hesap_kodu'}"/>
+                    <filter string="Cari" name="group_cari" context="{'group_by': 'cari'}"/>
+                    <filter string="Kaynak Modul" name="group_kaynak_modul" context="{'group_by': 'kaynak_modul'}"/>
+                    <filter string="Tarih" name="group_tarih" context="{'group_by': 'tarih:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Muhtasar Report Pivot View -->
+    <record id="view_guven_muhtasar_report_pivot" model="ir.ui.view">
+        <field name="name">guven.muhtasar.report.pivot</field>
+        <field name="model">guven.muhtasar.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Muhtasar Analizi">
+                <field name="vergi_turu" type="row"/>
+                <field name="tarih" type="col" interval="month"/>
+                <field name="tutar_yerel" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Muhtasar Wizard Form View -->
+    <record id="view_guven_muhtasar_wizard_form" model="ir.ui.view">
+        <field name="name">guven.muhtasar.wizard.form</field>
+        <field name="model">guven.muhtasar.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Muhtasar Raporu Olustur">
+                <group>
+                    <group>
+                        <field name="month"/>
+                    </group>
+                    <group>
+                        <field name="year"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate_report" string="Rapor Olustur" type="object" class="btn-primary"/>
+                    <button string="Iptal" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Muhtasar Report Action -->
+    <record id="action_guven_muhtasar_report" model="ir.actions.act_window">
+        <field name="name">Muhtasar Listesi</field>
+        <field name="res_model">guven.muhtasar.report</field>
+        <field name="view_mode">list,form,pivot</field>
+        <field name="search_view_id" ref="view_guven_muhtasar_report_search"/>
+        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+        <field name="context">{'search_default_not_cancelled': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Muhtasar raporu olusturmak icin tiklayin
+            </p>
+            <p>
+                Muhtasar raporu Logo MSSQL veritabanindan cekilir.
+                Ay ve yil secerek rapor olusturabilirsiniz.
+            </p>
+        </field>
+    </record>
+
+    <!-- Muhtasar Wizard Action -->
+    <record id="action_guven_muhtasar_wizard" model="ir.actions.act_window">
+        <field name="name">Muhtasar Raporu</field>
+        <field name="res_model">guven.muhtasar.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_guven_muhtasar_wizard_form"/>
+    </record>
+
+</odoo>

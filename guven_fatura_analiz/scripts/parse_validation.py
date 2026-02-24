@@ -63,12 +63,12 @@ def run(env):
         # E-fatura ve e-arşiv faturalarını say
         efatura_count = Fatura.search_count([
             ('company_id', '=', company.id),
-            ('kaynak', '=', 'e-fatura'),
+            ('kaynak', '=', 'e-fatura-izibiz'),
             ('details_received', '=', True),
         ])
         earsiv_count = Fatura.search_count([
             ('company_id', '=', company.id),
-            ('kaynak', '=', 'e-arsiv'),
+            ('kaynak', '=', 'e-arsiv-izibiz'),
             ('details_received', '=', True),
         ])
 
@@ -95,7 +95,7 @@ def run(env):
         # Her kaynak türünden rastgele fatura seç
         fetched_invoices = []
 
-        for kaynak in ('e-fatura', 'e-arsiv'):
+        for kaynak in ('e-fatura-izibiz', 'e-arsiv-izibiz'):
             pool = Fatura.search([
                 ('company_id', '=', company.id),
                 ('kaynak', '=', kaynak),
@@ -113,7 +113,7 @@ def run(env):
 
             # SOAP bağlantısı
             try:
-                if kaynak == 'e-fatura':
+                if kaynak == 'e-fatura-izibiz':
                     client, session_id, req_header = Fatura._get_soap_client_and_login(company)
                     soap_logout_client = client
                 else:
@@ -330,7 +330,7 @@ def _validate_single_invoice(env, inv, client, req_header, kaynak, company):
 
 def _fetch_raw_xml(inv, client, req_header, kaynak):
     """SOAP'tan raw UBL XML'i çek."""
-    if kaynak == 'e-fatura':
+    if kaynak == 'e-fatura-izibiz':
         search_key = {
             'LIMIT': 1,
             'UUID': inv.uuid,
