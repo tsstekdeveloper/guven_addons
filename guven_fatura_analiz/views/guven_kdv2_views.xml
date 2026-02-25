@@ -48,9 +48,9 @@
                 <field name="soy_adi" optional="show"/>
                 <field name="tckn" optional="show"/>
                 <field name="tevkifat_oran" optional="show"/>
-                <field name="tutar_yerel" sum="Toplam Tutar" optional="show"/>
-                <field name="kdv_tutar" sum="Toplam KDV" optional="show"/>
-                <field name="tevkif_edilen_kdv_tutari" sum="Toplam Tevkifat" optional="show"/>
+                <field name="tutar_yerel" sum="Toplam Tutar" optional="show" widget="float" options="{'digits': [16, 2]}"/>
+                <field name="kdv_tutar" sum="Toplam KDV" optional="show" widget="float" options="{'digits': [16, 2]}"/>
+                <field name="tevkif_edilen_kdv_tutari" sum="Toplam Tevkifat" optional="show" widget="float" options="{'digits': [16, 2]}"/>
             </list>
         </field>
     </record>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Search View -->
+        <record id="view_guven_vergi_analiz_search" model="ir.ui.view">
+            <field name="name">guven.vergi.analiz.search</field>
+            <field name="model">guven.vergi.analiz</field>
+            <field name="arch" type="xml">
+                <search string="Vergi Analizi">
+                    <field name="tax_type"/>
+                    <field name="kategori"/>
+                    <separator/>
+                    <!-- Vergi Tipi Filtreleri -->
+                    <filter name="filter_kdv" string="KDV" domain="[('tax_type', '=', 'kdv')]"/>
+                    <filter name="filter_withholding" string="Tevkifat" domain="[('tax_type', '=', 'withholding')]"/>
+                    <filter name="filter_bsmv" string="BSMV" domain="[('tax_type', '=', 'bsmv')]"/>
+                    <filter name="filter_konaklama" string="Konaklama" domain="[('tax_type', '=', 'konaklama')]"/>
+                    <filter name="filter_damga" string="Damga" domain="[('tax_type', '=', 'damga')]"/>
+                    <filter name="filter_diger" string="Diğer" domain="[('tax_type', '=', 'diger')]"/>
+                    <separator/>
+                    <!-- Kategori Filtreleri -->
+                    <filter name="filter_gelen_gib" string="Gelen GİB" domain="[('kategori', '=', '1_gelen_gib')]"/>
+                    <filter name="filter_gelen_logo" string="Gelen Logo" domain="[('kategori', '=', '2_gelen_logo')]"/>
+                    <filter name="filter_giden_gib" string="Giden GİB" domain="[('kategori', '=', '3_giden_gib')]"/>
+                    <filter name="filter_giden_logo" string="Giden Logo" domain="[('kategori', '=', '4_giden_logo')]"/>
+                    <filter name="filter_gib_fark" string="GİB Fark" domain="[('kategori', '=', '5_gib_fark')]"/>
+                    <filter name="filter_logo_fark" string="Logo Fark" domain="[('kategori', '=', '6_logo_fark')]"/>
+                    <separator/>
+                    <!-- Ay Filtreleri -->
+                    <filter name="filter_month_01" string="Ocak"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=1, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_02" string="Şubat"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=2, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=2, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_03" string="Mart"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=3, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=3, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_04" string="Nisan"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=4, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=4, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_05" string="Mayıs"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=5, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=5, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_06" string="Haziran"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=6, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=6, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_07" string="Temmuz"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=7, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=7, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_08" string="Ağustos"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=8, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=8, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_09" string="Eylül"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=9, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=9, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_10" string="Ekim"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=10, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=10, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_11" string="Kasım"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=11, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=11, day=30)).strftime('%Y-%m-%d'))]"/>
+                    <filter name="filter_month_12" string="Aralık"
+                            domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=12, day=1)).strftime('%Y-%m-%d')),
+                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=12, day=31)).strftime('%Y-%m-%d'))]"/>
+                    <group>
+                        <filter name="group_tax_type" string="Vergi Tipi" context="{'group_by': 'tax_type'}"/>
+                        <filter name="group_kategori" string="Kategori" context="{'group_by': 'kategori'}"/>
+                        <filter name="group_month_date" string="Ay" context="{'group_by': 'month_date:month'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Graph View -->
+        <record id="view_guven_vergi_analiz_graph" model="ir.ui.view">
+            <field name="name">guven.vergi.analiz.graph</field>
+            <field name="model">guven.vergi.analiz</field>
+            <field name="arch" type="xml">
+                <graph string="Vergi Analizi" type="bar" stacked="0" sample="1">
+                    <field name="tax_type"/>
+                    <field name="kategori"/>
+                    <field name="tutar" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <!-- Pivot View -->
+        <record id="view_guven_vergi_analiz_pivot" model="ir.ui.view">
+            <field name="name">guven.vergi.analiz.pivot</field>
+            <field name="model">guven.vergi.analiz</field>
+            <field name="arch" type="xml">
+                <pivot string="Vergi Analizi" sample="1">
+                    <field name="tax_type" type="row"/>
+                    <field name="kategori" type="col"/>
+                    <field name="tutar" type="measure"/>
+                    <field name="fatura_sayisi" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <!-- List View -->
+        <record id="view_guven_vergi_analiz_list" model="ir.ui.view">
+            <field name="name">guven.vergi.analiz.list</field>
+            <field name="model">guven.vergi.analiz</field>
+            <field name="arch" type="xml">
+                <list string="Vergi Analizi" create="0" edit="0" delete="0">
+                    <field name="month_date"/>
+                    <field name="tax_type"/>
+                    <field name="kategori"/>
+                    <field name="tutar" sum="Toplam" widget="float" options="{'digits': [16, 2]}"/>
+                    <field name="fatura_sayisi" sum="Toplam"/>
+                    <field name="company_id" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Action -->
+        <record id="action_guven_vergi_analiz" model="ir.actions.act_window">
+            <field name="name">Vergi Analizi</field>
+            <field name="res_model">guven.vergi.analiz</field>
+            <field name="view_mode">graph,pivot,list</field>
+            <field name="search_view_id" ref="view_guven_vergi_analiz_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Vergi analizi verisi bulunamadı.
+                </p>
+                <p>
+                    GİB faturalarındaki vergi detayları burada aylık bazda görselleştirilir.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -18,7 +18,7 @@
                 <field name="kimlik_no" optional="show"/>
                 <field name="adi" optional="show"/>
                 <field name="soyadi" optional="show"/>
-                <field name="tutar_yerel" sum="Toplam" optional="show"/>
+                <field name="tutar_yerel" sum="Toplam" optional="show" widget="float" options="{'digits': [16, 2]}"/>
                 <field name="hesap_kodu" optional="show"/>
                 <field name="hesap_adi" optional="show"/>
                 <field name="masraf_merkezi" optional="show"/>
@@ -31,7 +31,7 @@
                 <field name="proje" optional="hide"/>
                 <field name="kebir_hesabi_kodu" optional="hide"/>
                 <field name="kebir_hesabi_adi" optional="hide"/>
-                <field name="tutar" optional="hide"/>
+                <field name="tutar" optional="hide" widget="float" options="{'digits': [16, 2]}"/>
                 <field name="aciklama" optional="hide"/>
                 <field name="fis_aciklama" optional="hide"/>
                 <field name="hareket_yonu" optional="hide"/>
@@ -68,8 +68,8 @@
                             <field name="odenecek_gelir_vergileri"/>
                             <field name="vergi_turu"/>
                             <field name="vergi"/>
-                            <field name="tutar"/>
-                            <field name="tutar_yerel"/>
+                            <field name="tutar" widget="float" options="{'digits': [16, 2]}"/>
+                            <field name="tutar_yerel" widget="float" options="{'digits': [16, 2]}"/>
                         </group>
                     </group>
                     <group>

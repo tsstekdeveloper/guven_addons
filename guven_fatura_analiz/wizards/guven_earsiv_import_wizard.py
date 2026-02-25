@@ -340,22 +340,31 @@ class GuvenEarsivImportWizard(models.TransientModel):
                 summary_parts.append(f'<li>...ve {len(errors) - 20} hata daha</li>')
             summary_parts.append('</ul></div>')
 
-        # Optional Logo sync
+        # Optional Logo sync — compute date range from imported invoices
         logo_msg = ''
         if self.auto_logo_sync and created + updated > 0:
             try:
-                logo_wizard = self.env['guven.logo.sync.wizard'].create({
-                    'company_ids': [(6, 0, [company.id])],
-                })
-                logo_wizard.action_sync()
-                match_total = logo_wizard.match_total or 0
-                match_single = logo_wizard.match_single or 0
-                logo_msg = (
-                    f'<div class="alert alert-info">'
-                    f'<strong>Logo Eşleştirme:</strong> '
-                    f'{match_total} fatura tarandı, {match_single} eşleşme bulundu.'
-                    f'</div>'
-                )
+                earsiv_invoices = self.env['guven.fatura'].search([
+                    ('kaynak', '=', 'e-arsiv-gibexcel'),
+                    ('company_id', '=', company.id),
+                    ('issue_date', '!=', False),
+                ])
+                if earsiv_invoices:
+                    dates = earsiv_invoices.mapped('issue_date')
+                    logo_wizard = self.env['guven.logo.sync.wizard'].create({
+                        'company_ids': [(6, 0, [company.id])],
+                        'date_from': min(dates),
+                        'date_to': max(dates),
+                    })
+                    logo_wizard.action_sync()
+                    match_total = logo_wizard.match_total or 0
+                    match_single = logo_wizard.match_single or 0
+                    logo_msg = (
+                        f'<div class="alert alert-info">'
+                        f'<strong>Logo Eşleştirme:</strong> '
+                        f'{match_total} fatura tarandı, {match_single} eşleşme bulundu.'
+                        f'</div>'
+                    )
             except Exception as e:
                 _logger.exception("Logo sync after GIB Excel import failed")
                 logo_msg = (

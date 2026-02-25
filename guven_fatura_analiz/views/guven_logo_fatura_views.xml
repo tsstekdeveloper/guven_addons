@@ -43,10 +43,10 @@
                     <field name="iptal_durumu" optional="show"/>
                     <field name="vkn" optional="show"/>
                     <field name="tckn" optional="show"/>
-                    <field name="fatura_tutari" sum="Toplam" optional="show"/>
+                    <field name="fatura_tutari" sum="Toplam" optional="show" widget="float" options="{'digits': [16, 2]}"/>
                     <field name="para_birimi" optional="show"/>
                     <field name="kur" optional="show"/>
-                    <field name="doviz_tutari" sum="Toplam" optional="show"/>
+                    <field name="doviz_tutari" sum="Toplam" optional="show" widget="float" options="{'digits': [16, 2]}"/>
                     <field name="company_id" optional="hide" groups="base.group_multi_company"/>
                 </list>
             </field>
@@ -72,10 +72,10 @@
                                     <group string="Tarih ve Tutar">
                                         <field name="fatura_tarihi_1"/>
                                         <field name="fatura_tarihi_2"/>
-                                        <field name="fatura_tutari"/>
+                                        <field name="fatura_tutari" widget="float" options="{'digits': [16, 2]}"/>
                                         <field name="para_birimi"/>
                                         <field name="kur"/>
-                                        <field name="doviz_tutari"/>
+                                        <field name="doviz_tutari" widget="float" options="{'digits': [16, 2]}"/>
                                     </group>
                                 </group>
                                 <group>

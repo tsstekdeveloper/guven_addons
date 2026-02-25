@@ -79,6 +79,14 @@
                   sequence="20"
                   groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
 
+        <!-- Submenu: Vergi Analizi -->
+        <menuitem id="menu_fatura_analiz_vergi_analiz"
+                  name="Vergi Analizi"
+                  parent="menu_fatura_analiz_raporlar"
+                  action="action_guven_vergi_analiz"
+                  sequence="40"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
         <!-- Submenu: Muhtasar -->
         <menuitem id="menu_fatura_analiz_muhtasar"
                   name="Muhtasar"
@@ -116,6 +124,14 @@
                   parent="menu_fatura_analiz_veri_guncelleme"
                   action="action_guven_earsiv_import_wizard"
                   sequence="15"
+                  groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+
+        <!-- Submenu: QNB Excel İçeri Al -->
+        <menuitem id="menu_fatura_analiz_qnb_import"
+                  name="QNB Excel İçeri Al"
+                  parent="menu_fatura_analiz_veri_guncelleme"
+                  action="action_guven_qnb_import_wizard"
+                  sequence="17"
                   groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
 
         <!-- Submenu: Company Definitions -->
