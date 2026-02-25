@@ -11,6 +11,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from markupsafe import Markup
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -201,6 +203,61 @@ class GuvenFatura(models.Model):
         'UNIQUE (uuid, kaynak, company_id)',
         'Bu fatura zaten mevcut (aynı UUID, kaynak ve şirket).',
     )
+
+    # --- Write Override (Kilit Koruması) ---
+
+    def write(self, vals):
+        lock_fields = {'is_locked', 'locked_by_id', 'locked_date', 'lock_reason'}
+        if not set(vals.keys()).issubset(lock_fields):
+            locked = self.filtered('is_locked')
+            if locked:
+                raise UserError(
+                    _("%d adet kilitli kayıt güncellenemiyor!\n"
+                      "Kilitli faturalar: %s\n\n"
+                      "Önce kayıtların kilidini kaldırın.")
+                    % (len(locked), ', '.join(locked.mapped('invoice_id')))
+                )
+        return super().write(vals)
+
+    # --- Kilitleme Aksiyonları ---
+
+    def action_lock(self):
+        to_lock = self.filtered(lambda r: not r.is_locked)
+        if not to_lock:
+            return
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Fatura Kilitle',
+            'res_model': 'guven.fatura.lock.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_ids': to_lock.ids,
+                'default_fatura_count': len(to_lock),
+            },
+        }
+
+    def action_unlock(self):
+        to_unlock = self.filtered('is_locked')
+        for record in to_unlock:
+            locked_by = record.locked_by_id.name or 'Bilinmeyen'
+            locked_date_str = (
+                record.locked_date.strftime('%d.%m.%Y %H:%M')
+                if record.locked_date else ''
+            )
+            record.write({
+                'is_locked': False,
+                'locked_by_id': False,
+                'locked_date': False,
+                'lock_reason': False,
+            })
+            record.message_post(
+                body=Markup("Kilit kaldırıldı — <b>%s</b><br/>"
+                            "Önceki kilit: %s (%s)")
+                     % (self.env.user.name, locked_by, locked_date_str),
+                message_type='notification',
+            )
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     # --- Computed Methods ---
 

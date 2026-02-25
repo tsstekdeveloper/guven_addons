@@ -26,6 +26,7 @@
         'views/guven_kdv2_views.xml',
         'views/guven_muhtasar_views.xml',
         'views/guven_earsiv_import_wizard_views.xml',
+        'views/guven_fatura_lock_wizard_views.xml',
         'views/menus.xml',
         'data/cron_data.xml',
     ],

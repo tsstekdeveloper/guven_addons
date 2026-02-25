@@ -39,3 +39,4 @@ access_guven_earsiv_import_wizard_sorumlusu,guven.earsiv.import.wizard.sorumlusu
 access_guven_earsiv_import_wizard_yoneticisi,guven.earsiv.import.wizard.yoneticisi,model_guven_earsiv_import_wizard,group_muhasebe_yoneticisi,1,1,1,1
 access_guven_earsiv_import_file_sorumlusu,guven.earsiv.import.file.sorumlusu,model_guven_earsiv_import_file,group_muhasebe_sorumlusu,1,1,1,0
 access_guven_earsiv_import_file_yoneticisi,guven.earsiv.import.file.yoneticisi,model_guven_earsiv_import_file,group_muhasebe_yoneticisi,1,1,1,1
+access_guven_fatura_lock_wizard_yoneticisi,guven.fatura.lock.wizard.yoneticisi,model_guven_fatura_lock_wizard,group_muhasebe_yoneticisi,1,1,1,1
