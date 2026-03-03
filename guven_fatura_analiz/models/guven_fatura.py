@@ -1630,7 +1630,7 @@ class GuvenFatura(models.Model):
                 if not cursor:
                     # İlk çalışma — lookback başlangıcından başla
                     cursor = min_start
-                elif last_completed and last_completed < today:
+                elif last_completed and last_completed < today and cursor >= today:
                     # Yeni gün, önceki tur tamamlanmıştı — yeni tur başlat
                     cursor = min_start
 
@@ -1653,32 +1653,41 @@ class GuvenFatura(models.Model):
                     company.name, cursor, block_end,
                 )
 
-                created = updated = 0
-                for direction in ('IN', 'OUT'):
-                    r = self._sync_efatura_headers(cursor, block_end, direction, company)
+                try:
+                    created = updated = 0
+                    for direction in ('IN', 'OUT'):
+                        r = self._sync_efatura_headers(cursor, block_end, direction, company)
+                        created += r['created']
+                        updated += r['updated']
+
+                    r = self._sync_earsiv_headers(cursor, block_end, company)
                     created += r['created']
                     updated += r['updated']
 
-                r = self._sync_earsiv_headers(cursor, block_end, company)
-                created += r['created']
-                updated += r['updated']
+                    total_created += created
+                    total_updated += updated
 
-                total_created += created
-                total_updated += updated
+                    # Cursor'ı ilerlet
+                    next_cursor = block_end + timedelta(days=1)
+                    write_vals = {'efatura_sync_cursor_date': next_cursor}
+                    if next_cursor >= today:
+                        write_vals['efatura_sync_last_completed_date'] = today
+                    company.sudo().write(write_vals)
+                    # Blok sonrası commit (şirketler arası izolasyon)
+                    self.env.cr.commit()
 
-                # Cursor'ı ilerlet
-                next_cursor = block_end + timedelta(days=1)
-                write_vals = {'efatura_sync_cursor_date': next_cursor}
-                if next_cursor >= today:
-                    write_vals['efatura_sync_last_completed_date'] = today
-                company.sudo().write(write_vals)
-                # Blok sonrası commit (şirketler arası izolasyon)
-                self.env.cr.commit()
-
-                _logger.info(
-                    "[GUVEN-SYNC] %s: %d yeni, %d güncellenen",
-                    company.name, created, updated,
-                )
+                    _logger.info(
+                        "[GUVEN-SYNC] %s: %d yeni, %d güncellenen",
+                        company.name, created, updated,
+                    )
+                except Exception:
+                    _logger.exception(
+                        "[GUVEN-SYNC] %s: Sync hatası, sonraki şirkete geçiliyor",
+                        company.name,
+                    )
+                    self.env.cr.rollback()
+                    self.env.invalidate_all()
+                    continue
 
             elapsed = time.time() - t0
             _logger.info(

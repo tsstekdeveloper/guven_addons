@@ -559,7 +559,7 @@ class GuvenLogoFatura(models.Model):
                 cursor_date = company.logo_sync_cursor_date
                 if not cursor_date:
                     cursor_date = min_start
-                elif last_completed and last_completed < today:
+                elif last_completed and last_completed < today and cursor_date >= today:
                     cursor_date = min_start
 
                 # Güvenlik: lookback_days küçültüldüyse cursor'ı düzelt
@@ -583,47 +583,50 @@ class GuvenLogoFatura(models.Model):
 
                 try:
                     result = self._sync_company(company, cursor_date, block_end)
+
+                    total_created += result['created']
+                    total_updated += result['updated']
+                    total_deleted += result['deleted']
+
+                    # Logo eşleştirme (GİB → Logo)
+                    try:
+                        self.env['guven.fatura']._match_logo_invoices(
+                            cursor_date, block_end, [company.id],
+                        )
+                    except Exception:
+                        _logger.exception(
+                            "[GUVEN-LOGO] %s: Logo eşleştirme hatası", company.name,
+                        )
+
+                    # Ters eşleştirme (Logo → GİB)
+                    try:
+                        self._match_gib_invoices(cursor_date, block_end, [company.id])
+                    except Exception:
+                        _logger.exception(
+                            "[GUVEN-LOGO] %s: Ters eşleştirme hatası", company.name,
+                        )
+
+                    # Cursor'ı ilerlet
+                    next_cursor = block_end + timedelta(days=1)
+                    write_vals = {'logo_sync_cursor_date': next_cursor}
+                    if next_cursor >= today:
+                        write_vals['logo_sync_last_completed_date'] = today
+                    company.sudo().write(write_vals)
+                    self.env.cr.commit()
+
+                    _logger.info(
+                        "[GUVEN-LOGO] %s: %d yeni, %d güncellenen, %d silinen",
+                        company.name, result['created'], result['updated'],
+                        result['deleted'],
+                    )
                 except Exception:
                     _logger.exception(
-                        "[GUVEN-LOGO] %s: MSSQL sync hatası", company.name,
+                        "[GUVEN-LOGO] %s: Sync hatası, sonraki şirkete geçiliyor",
+                        company.name,
                     )
+                    self.env.cr.rollback()
+                    self.env.invalidate_all()
                     continue
-
-                total_created += result['created']
-                total_updated += result['updated']
-                total_deleted += result['deleted']
-
-                # Logo eşleştirme (GİB → Logo)
-                try:
-                    self.env['guven.fatura']._match_logo_invoices(
-                        cursor_date, block_end, [company.id],
-                    )
-                except Exception:
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Logo eşleştirme hatası", company.name,
-                    )
-
-                # Ters eşleştirme (Logo → GİB)
-                try:
-                    self._match_gib_invoices(cursor_date, block_end, [company.id])
-                except Exception:
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Ters eşleştirme hatası", company.name,
-                    )
-
-                # Cursor'ı ilerlet
-                next_cursor = block_end + timedelta(days=1)
-                write_vals = {'logo_sync_cursor_date': next_cursor}
-                if next_cursor >= today:
-                    write_vals['logo_sync_last_completed_date'] = today
-                company.sudo().write(write_vals)
-                self.env.cr.commit()
-
-                _logger.info(
-                    "[GUVEN-LOGO] %s: %d yeni, %d güncellenen, %d silinen",
-                    company.name, result['created'], result['updated'],
-                    result['deleted'],
-                )
 
             elapsed = time.time() - t0
             _logger.info(
