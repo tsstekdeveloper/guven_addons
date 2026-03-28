@@ -136,6 +136,10 @@ class GuvenFatura(models.Model):
     # --- Durum ve Kontrol ---
     gvn_active = fields.Boolean(
         string='Geçerli', compute='_compute_gvn_active', store=True, index=True,
+        readonly=False,
+    )
+    is_muhasebe_yoneticisi = fields.Boolean(
+        compute='_compute_is_muhasebe_yoneticisi',
     )
     status_code = fields.Char(string='SOAP Durum Kodu')
     status_description = fields.Char(string='SOAP Durum Açıklaması')
@@ -298,6 +302,11 @@ class GuvenFatura(models.Model):
             else:
                 # E-Fatura: sadece status_code bazlı
                 record.gvn_active = record.status_code not in self._EFATURA_INVALID_STATUS
+
+    def _compute_is_muhasebe_yoneticisi(self):
+        is_yonetici = self.env.user.has_group('guven_fatura_analiz.group_muhasebe_yoneticisi')
+        for record in self:
+            record.is_muhasebe_yoneticisi = is_yonetici
 
     @api.depends(
         'logo_fatura_count', 'logo_fatura_vkn', 'logo_fatura_tckn',

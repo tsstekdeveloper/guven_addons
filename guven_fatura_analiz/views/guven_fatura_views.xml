@@ -178,7 +178,8 @@
                                         <field name="response_code" readonly="1"/>
                                     </group>
                                     <group string="İptal Bilgileri">
-                                        <field name="gvn_active" readonly="1"/>
+                                        <field name="is_muhasebe_yoneticisi" invisible="1"/>
+                                        <field name="gvn_active" readonly="not is_muhasebe_yoneticisi"/>
                                         <field name="is_cancellation" readonly="1"/>
                                         <field name="cancelled_invoice_id" readonly="1"/>
                                         <field name="harici_iptal" readonly="1"/>
