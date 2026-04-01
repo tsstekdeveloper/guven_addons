@@ -304,6 +304,10 @@
                     <filter name="filter_kimlik_farkli" string="Kimlik Farklı" domain="[('kimlik_farkli', '=', True)]"/>
                     <filter name="filter_tarih_farkli" string="Tarih Farklı" domain="[('fatura_tarihi_farkli', '=', True)]"/>
                     <separator/>
+                    <filter name="filter_tutar_ayni" string="Tutar Aynı" domain="[('tutar_farki_var', '=', False)]"/>
+                    <filter name="filter_kimlik_ayni" string="Kimlik Aynı" domain="[('kimlik_farkli', '=', False)]"/>
+                    <filter name="filter_tarih_ayni" string="Tarih Aynı" domain="[('fatura_tarihi_farkli', '=', False)]"/>
+                    <separator/>
                     <filter name="filter_incoming" string="Gelen" domain="[('direction', '=', 'IN')]"/>
                     <filter name="filter_outgoing" string="Giden" domain="[('direction', '=', 'OUT')]"/>
                     <separator/>
@@ -318,40 +322,40 @@
                     <separator/>
                     <filter name="filter_month_01" string="Ocak"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=1, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=2, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_02" string="Şubat"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=2, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=2, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=3, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_03" string="Mart"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=3, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=3, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=4, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_04" string="Nisan"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=4, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=4, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=5, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_05" string="Mayıs"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=5, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=5, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=6, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_06" string="Haziran"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=6, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=6, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=7, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_07" string="Temmuz"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=7, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=7, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=8, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_08" string="Ağustos"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=8, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=8, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=9, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_09" string="Eylül"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=9, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=9, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=10, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_10" string="Ekim"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=10, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=10, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=11, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_11" string="Kasım"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=11, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=11, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=12, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_12" string="Aralık"
                             domain="[('issue_date', '&gt;=', (context_today() + relativedelta(month=12, day=1)).strftime('%Y-%m-%d')),
-                                     ('issue_date', '&lt;=', (context_today() + relativedelta(month=12, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('issue_date', '&lt;', (context_today() + relativedelta(month=1, day=1, years=1)).strftime('%Y-%m-%d'))]"/>
                     <group>
                         <filter name="group_direction" string="Yön" context="{'group_by': 'direction'}"/>
                         <filter name="group_kaynak" string="Kaynak" context="{'group_by': 'kaynak'}"/>

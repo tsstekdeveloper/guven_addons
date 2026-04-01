@@ -30,40 +30,40 @@
                     <!-- Ay Filtreleri -->
                     <filter name="filter_month_01" string="Ocak"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=1, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=2, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_02" string="Şubat"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=2, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=2, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=3, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_03" string="Mart"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=3, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=3, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=4, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_04" string="Nisan"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=4, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=4, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=5, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_05" string="Mayıs"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=5, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=5, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=6, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_06" string="Haziran"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=6, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=6, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=7, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_07" string="Temmuz"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=7, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=7, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=8, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_08" string="Ağustos"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=8, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=8, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=9, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_09" string="Eylül"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=9, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=9, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=10, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_10" string="Ekim"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=10, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=10, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=11, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_11" string="Kasım"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=11, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=11, day=30)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=12, day=1)).strftime('%Y-%m-%d'))]"/>
                     <filter name="filter_month_12" string="Aralık"
                             domain="[('month_date', '&gt;=', (context_today() + relativedelta(month=12, day=1)).strftime('%Y-%m-%d')),
-                                     ('month_date', '&lt;=', (context_today() + relativedelta(month=12, day=31)).strftime('%Y-%m-%d'))]"/>
+                                     ('month_date', '&lt;', (context_today() + relativedelta(month=1, day=1, years=1)).strftime('%Y-%m-%d'))]"/>
                     <group>
                         <filter name="group_tax_type" string="Vergi Tipi" context="{'group_by': 'tax_type'}"/>
                         <filter name="group_kategori" string="Kategori" context="{'group_by': 'kategori'}"/>
