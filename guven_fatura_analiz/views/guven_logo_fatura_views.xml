@@ -207,7 +207,9 @@
                     <filter name="filter_tarih_farkli" string="Tarih Farklı" domain="[('fatura_tarihi_farkli', '=', True)]"/>
                     <separator/>
                     <filter name="filter_tutar_ayni" string="Tutar Aynı" domain="[('tutar_farki_var', '=', False)]"/>
+                    <separator/>
                     <filter name="filter_kimlik_ayni" string="Kimlik Aynı" domain="[('kimlik_farkli', '=', False)]"/>
+                    <separator/>
                     <filter name="filter_tarih_ayni" string="Tarih Aynı" domain="[('fatura_tarihi_farkli', '=', False)]"/>
                     <separator/>
                     <filter name="filter_aktif" string="Aktif" domain="[('iptal_durumu', '=', '0')]"/>
