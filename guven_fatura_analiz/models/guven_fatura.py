@@ -1654,10 +1654,6 @@ class GuvenFatura(models.Model):
                     # Yeni gün, önceki tur tamamlanmıştı — yeni tur başlat
                     cursor = min_start
 
-                # Güvenlik: lookback_days küçültüldüyse cursor'ı düzelt
-                if cursor < min_start:
-                    cursor = min_start
-
                 # Cursor zaten bugüne ulaştıysa turu tamamla
                 if cursor >= today:
                     company.sudo().write({
