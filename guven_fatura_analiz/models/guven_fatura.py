@@ -404,9 +404,20 @@ class GuvenFatura(models.Model):
             USER_NAME=creds['username'],
             PASSWORD=creds['password'],
         )
-        session_id = (
-            login_resp.SESSION_ID if hasattr(login_resp, 'SESSION_ID') else str(login_resp)
-        )
+
+        # SESSION_ID attribute var ama None olabilir (login başarısız)
+        session_id = getattr(login_resp, 'SESSION_ID', None)
+        if not session_id:
+            error_msg = ''
+            error_type = getattr(login_resp, 'ERROR_TYPE', None)
+            if error_type:
+                error_code = getattr(error_type, 'ERROR_CODE', '')
+                error_desc = getattr(error_type, 'ERROR_SHORT_DES', '')
+                error_msg = f" (kod: {error_code}, {error_desc})"
+            raise UserError(
+                _("%s için izibiz login başarısız: SESSION_ID alınamadı.%s")
+                % (company.name, error_msg)
+            )
 
         request_header = {
             'SESSION_ID': session_id,
