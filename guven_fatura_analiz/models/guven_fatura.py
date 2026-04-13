@@ -1503,19 +1503,14 @@ class GuvenFatura(models.Model):
                 )
                 continue
 
+            success = errors = 0
             try:
                 for idx, inv in enumerate(inv_set, 1):
                     try:
                         inv._fetch_and_parse_xml(client, request_header)
-                        _logger.info(
-                            "[GUVEN-EFATURA] %s başarılı [%s] (%d/%d)",
-                            inv.invoice_id, company.name, idx, len(inv_set),
-                        )
-                    except Exception as e:
-                        _logger.warning(
-                            "[GUVEN-EFATURA] %s hatası [%s]: %s",
-                            inv.invoice_id, company.name, e,
-                        )
+                        success += 1
+                    except Exception:
+                        errors += 1
                         continue
 
                     if idx % COMMIT_EVERY == 0:
@@ -1525,6 +1520,11 @@ class GuvenFatura(models.Model):
                     client.service.Logout(REQUEST_HEADER=request_header)
                 except Exception:
                     pass
+
+            _logger.info(
+                "[GUVEN-EFATURA] %s: %d/%d başarılı, %d hata",
+                company.name, success, len(inv_set), errors,
+            )
 
         self.env.cr.commit()
 
@@ -1590,19 +1590,14 @@ class GuvenFatura(models.Model):
                 )
                 continue
 
+            success = errors = 0
             try:
                 for idx, inv in enumerate(inv_set, 1):
                     try:
                         inv._fetch_earsiv_xml(earsiv_client, request_header)
-                        _logger.info(
-                            "[GUVEN-EARSIV] %s başarılı [%s] (%d/%d)",
-                            inv.invoice_id, company.name, idx, len(inv_set),
-                        )
-                    except Exception as e:
-                        _logger.warning(
-                            "[GUVEN-EARSIV] %s hatası [%s]: %s",
-                            inv.invoice_id, company.name, e,
-                        )
+                        success += 1
+                    except Exception:
+                        errors += 1
                         continue
 
                     if idx % COMMIT_EVERY == 0:
@@ -1612,6 +1607,11 @@ class GuvenFatura(models.Model):
                     efatura_client.service.Logout(REQUEST_HEADER=request_header)
                 except Exception:
                     pass
+
+            _logger.info(
+                "[GUVEN-EARSIV] %s: %d/%d başarılı, %d hata",
+                company.name, success, len(inv_set), errors,
+            )
 
         self.env.cr.commit()
 
@@ -1664,11 +1664,6 @@ class GuvenFatura(models.Model):
 
                 block_end = min(cursor + timedelta(days=6), today)
 
-                _logger.info(
-                    "[GUVEN-SYNC] %s: %s → %s",
-                    company.name, cursor, block_end,
-                )
-
                 try:
                     created = updated = 0
                     for direction in ('IN', 'OUT'):
@@ -1693,8 +1688,8 @@ class GuvenFatura(models.Model):
                     self.env.cr.commit()
 
                     _logger.info(
-                        "[GUVEN-SYNC] %s: %d yeni, %d güncellenen",
-                        company.name, created, updated,
+                        "[GUVEN-SYNC] %s: %s → %s | %d yeni, %d günc.",
+                        company.name, cursor, block_end, created, updated,
                     )
                 except Exception:
                     _logger.exception(
