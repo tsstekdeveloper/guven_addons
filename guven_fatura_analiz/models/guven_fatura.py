@@ -692,7 +692,7 @@ class GuvenFatura(models.Model):
                     self.create(vals)
                     created += 1
 
-            return {'created': created, 'updated': updated}
+            return {'created': created, 'updated': updated, 'soap_count': len(invoice_elems)}
 
         finally:
             try:
@@ -904,7 +904,7 @@ class GuvenFatura(models.Model):
                     )
                     created += 1
 
-            return {'created': created, 'updated': updated}
+            return {'created': created, 'updated': updated, 'soap_count': len(invoice_elems)}
 
         finally:
             try:
@@ -1665,15 +1665,17 @@ class GuvenFatura(models.Model):
                 block_end = min(cursor, today)
 
                 try:
-                    created = updated = 0
+                    created = updated = soap_total = 0
                     for direction in ('IN', 'OUT'):
                         r = self._sync_efatura_headers(cursor, block_end, direction, company)
                         created += r['created']
                         updated += r['updated']
+                        soap_total += r.get('soap_count', 0)
 
                     r = self._sync_earsiv_headers(cursor, block_end, company)
                     created += r['created']
                     updated += r['updated']
+                    soap_total += r.get('soap_count', 0)
 
                     total_created += created
                     total_updated += updated
@@ -1688,8 +1690,8 @@ class GuvenFatura(models.Model):
                     self.env.cr.commit()
 
                     _logger.info(
-                        "[GUVEN-SYNC] %s: %s → %s | %d yeni, %d günc.",
-                        company.name, cursor, block_end, created, updated,
+                        "[GUVEN-SYNC] %s: %s → %s | %d yeni, %d günc. (SOAP: %d)",
+                        company.name, cursor, block_end, created, updated, soap_total,
                     )
                 except Exception:
                     _logger.exception(
