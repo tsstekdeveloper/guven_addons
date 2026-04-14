@@ -1662,7 +1662,7 @@ class GuvenFatura(models.Model):
                     self.env.cr.commit()
                     continue
 
-                block_end = min(cursor + timedelta(days=6), today)
+                block_end = min(cursor, today)
 
                 try:
                     created = updated = 0
