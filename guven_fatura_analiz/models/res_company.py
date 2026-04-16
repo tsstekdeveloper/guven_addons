@@ -253,11 +253,19 @@ class ResCompany(models.Model):
             )
             cursor = conn.cursor()
 
-            # Count invoices in the configured table
+            # Resolve invoice table from period, fallback to static field
+            Donem = self.env['guven.logo.donem']
+            inv_table, _cl_table = Donem.logo_tablo_adlari_ver(
+                self, fields.Date.today(),
+            )
+            if not inv_table:
+                inv_table = self.logo_invoice_table
+
+            # Count invoices in the resolved table
             invoice_count = 0
-            if self.logo_invoice_table:
+            if inv_table:
                 try:
-                    cursor.execute(f"SELECT COUNT(*) FROM {self.logo_invoice_table}")
+                    cursor.execute(f"SELECT COUNT(*) FROM {inv_table}")
                     invoice_count = cursor.fetchone()[0]
                 except Exception:
                     pass
@@ -265,7 +273,7 @@ class ResCompany(models.Model):
             conn.close()
 
             message = _("Logo MSSQL bağlantısı başarılı.")
-            if self.logo_invoice_table and invoice_count:
+            if inv_table and invoice_count:
                 message = _(
                     "Logo MSSQL bağlantısı başarılı. "
                     "Fatura tablosunda %s kayıt bulundu."

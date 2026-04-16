@@ -443,6 +443,14 @@ class GuvenLogoFatura(models.Model):
         import pymssql
 
         creds = company.get_logo_credentials()
+
+        # Resolve table names from period, fallback to static fields
+        Donem = self.env['guven.logo.donem']
+        inv_table, cl_table = Donem.logo_tablo_adlari_ver(company, date_from)
+        if not inv_table:
+            inv_table = creds['invoice_table']
+            cl_table = creds['clcard_table']
+
         conn = pymssql.connect(
             server=creds['server'],
             port=str(creds['port']),
@@ -456,8 +464,8 @@ class GuvenLogoFatura(models.Model):
         try:
             cursor = conn.cursor(as_dict=True)
             sql = _LOGO_SQL.format(
-                invoice_table=creds['invoice_table'],
-                clcard_table=creds['clcard_table'],
+                invoice_table=inv_table,
+                clcard_table=cl_table,
             )
             cursor.execute(sql, (date_from, date_to, date_from, date_to))
             rows = cursor.fetchall()

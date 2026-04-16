@@ -87,10 +87,23 @@ class GuvenLogoSyncWizard(models.TransientModel):
                 continue
 
             try:
-                with self.env.cr.savepoint():
-                    result = LogoFatura._sync_company(
-                        company, self.date_from, self.date_to,
-                    )
+                # Split date range by logo period boundaries
+                Donem = self.env['guven.logo.donem']
+                parcalar = Donem.tarih_araligini_bol(
+                    company, self.date_from, self.date_to,
+                )
+                if not parcalar:
+                    # No periods defined, use full range (fallback in _sync_company)
+                    parcalar = [(self.date_from, self.date_to, None)]
+
+                comp_result = {'fetched': 0, 'created': 0, 'updated': 0, 'deleted': 0}
+                for parca_from, parca_to, _firma_kodu in parcalar:
+                    with self.env.cr.savepoint():
+                        r = LogoFatura._sync_company(
+                            company, parca_from, parca_to,
+                        )
+                    for k in comp_result:
+                        comp_result[k] += r[k]
             except Exception as e:
                 _logger.exception("Logo sync error for %s", company.name)
                 log_lines.append(f"  HATA: {e}")
@@ -101,18 +114,18 @@ class GuvenLogoSyncWizard(models.TransientModel):
                 })
                 continue
 
-            totals['fetched'] += result['fetched']
-            totals['created'] += result['created']
-            totals['updated'] += result['updated']
-            totals['deleted'] += result['deleted']
+            totals['fetched'] += comp_result['fetched']
+            totals['created'] += comp_result['created']
+            totals['updated'] += comp_result['updated']
+            totals['deleted'] += comp_result['deleted']
             log_lines.append(
-                f"  Logo'dan {result['fetched']} kayıt okundu: "
-                f"{result['created']} yeni, {result['updated']} güncellenen, "
-                f"{result['deleted']} silinen"
+                f"  Logo'dan {comp_result['fetched']} kayıt okundu: "
+                f"{comp_result['created']} yeni, {comp_result['updated']} güncellenen, "
+                f"{comp_result['deleted']} silinen"
             )
             company_data.append({
                 'name': company.name,
-                **result,
+                **comp_result,
             })
 
         # Logo Eşleştirme (GİB → Logo)

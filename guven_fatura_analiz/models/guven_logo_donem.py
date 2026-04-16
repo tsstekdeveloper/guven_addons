@@ -65,3 +65,58 @@ class GuvenLogoDonem(models.Model):
         ], limit=1)
 
         return donem.logo_firma_kodu if donem else False
+
+    @api.model
+    def logo_tablo_adlari_ver(self, company_id, tarih):
+        """Return (invoice_table, clcard_table) for a company at a given date.
+
+        Args:
+            company_id: res.company record or recordset (single)
+            tarih: date or string (YYYY-MM-DD)
+
+        Returns:
+            tuple: (invoice_table, clcard_table) or (False, False)
+        """
+        kod = self.logo_firma_kodu_ver(company_id, tarih)
+        if not kod:
+            return False, False
+        return f'LG_{kod}_01_INVOICE', f'LG_{kod}_CLCARD'
+
+    @api.model
+    def tarih_araligini_bol(self, company_id, date_from, date_to):
+        """Split a date range by logo period boundaries.
+
+        Args:
+            company_id: res.company record or recordset (single)
+            date_from: start date
+            date_to: end date
+
+        Returns:
+            list of (date_from, date_to, firma_kodu) tuples
+        """
+        from datetime import timedelta
+
+        if isinstance(date_from, str):
+            date_from = fields.Date.from_string(date_from)
+        if isinstance(date_to, str):
+            date_to = fields.Date.from_string(date_to)
+
+        donemler = self.sudo().search([
+            ('company_id', '=', company_id.id),
+            ('baslangic_tarihi', '<=', date_to),
+            '|',
+            ('bitis_tarihi', '>=', date_from),
+            ('bitis_tarihi', '=', False),
+        ], order='baslangic_tarihi asc')
+
+        if not donemler:
+            return []
+
+        parcalar = []
+        for donem in donemler:
+            parca_from = max(date_from, donem.baslangic_tarihi)
+            parca_to = min(date_to, donem.bitis_tarihi) if donem.bitis_tarihi else date_to
+            if parca_from <= parca_to:
+                parcalar.append((parca_from, parca_to, donem.logo_firma_kodu))
+
+        return parcalar

@@ -1,4 +1,5 @@
 import logging
+from datetime import date as date_cls
 
 import pymssql
 
@@ -332,7 +333,11 @@ class GuvenMuhtasarWizard(models.TransientModel):
             ))
 
         company = self.env.company
-        firma_kodu = company.logo_firma_kodu
+        Donem = self.env['guven.logo.donem']
+        tarih = date_cls(self.year, int(self.month), 1)
+        firma_kodu = Donem.logo_firma_kodu_ver(company, tarih)
+        if not firma_kodu:
+            firma_kodu = company.logo_firma_kodu
         if not firma_kodu:
             raise UserError(_(
                 "Secili firma icin Logo firma kodu tanimlanmamis. "
