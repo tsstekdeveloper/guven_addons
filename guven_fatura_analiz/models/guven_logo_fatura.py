@@ -90,8 +90,8 @@ class GuvenLogoFatura(models.Model):
 
     # TRCODE → direction mapping (Logo fatura tipi → GİB yönü)
     _TRCODE_DIRECTION = {
-        '1': 'IN', '3': 'IN', '4': 'IN', '13': 'IN',      # Alış = GİB Gelen
-        '6': 'OUT', '7': 'OUT', '8': 'OUT', '9': 'OUT',    # Satış = GİB Giden
+        '1': 'IN', '3': 'IN', '4': 'IN', '5': 'IN', '13': 'IN',   # Alış = GİB Gelen
+        '2': 'OUT', '6': 'OUT', '7': 'OUT', '8': 'OUT', '9': 'OUT', '14': 'OUT',  # Satış = GİB Giden
     }
 
     company_id = fields.Many2one(
@@ -104,14 +104,19 @@ class GuvenLogoFatura(models.Model):
     fatura_tipi = fields.Selection(
         selection=[
             ('1', 'Alış Faturası'),
+            ('2', 'Perakende Satış Faturası'),
             ('3', 'Alış İade Faturası'),
             ('4', 'Alış İrsaliyeli Fatura'),
+            ('5', 'Alış İade İrsaliyeli'),
             ('6', 'Satış Faturası'),
             ('7', 'Satış İade Faturası'),
             ('8', 'Satış İrsaliyeli Fatura'),
             ('9', 'Satış İade İrsaliyeli'),
+            ('10', 'Alış Proforma'),
+            ('11', 'Satış Proforma'),
             ('12', 'Nadir'),
             ('13', 'Gelen E-Fatura'),
+            ('14', 'Giden E-Fatura'),
         ],
         string='Fatura Tipi',
     )
