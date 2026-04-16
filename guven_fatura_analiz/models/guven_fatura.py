@@ -1493,7 +1493,7 @@ class GuvenFatura(models.Model):
                 ('details_received', '=', False),
                 ('kaynak', '=', 'e-fatura-izibiz'),
                 ('company_id', '=', company.id),
-            ], order='issue_date ASC', limit=BATCH_SIZE)
+            ], order='issue_date DESC', limit=BATCH_SIZE)
             try:
                 client, session_id, request_header = \
                     self._get_soap_client_and_login(company)
@@ -1580,7 +1580,7 @@ class GuvenFatura(models.Model):
                 ('details_received', '=', False),
                 ('kaynak', '=', 'e-arsiv-izibiz'),
                 ('company_id', '=', company.id),
-            ], order='issue_date ASC', limit=BATCH_SIZE)
+            ], order='issue_date DESC', limit=BATCH_SIZE)
             try:
                 efatura_client, earsiv_client, session_id, request_header = \
                     self._get_earsiv_soap_client(company)
