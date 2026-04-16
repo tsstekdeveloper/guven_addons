@@ -152,6 +152,7 @@ class GuvenLogoFatura(models.Model):
     tutar_farki = fields.Float(string='Tutar Farkı', digits=(16, 8), copy=False)
     kimlik_farkli = fields.Boolean(string='Kimlik Farklı', default=False, copy=False)
     fatura_tarihi_farkli = fields.Boolean(string='Tarih Farklı', default=False, copy=False)
+    yon_farkli = fields.Boolean(string='Yön Farklı', default=False, copy=False)
     gib_karsilastirma_html = fields.Html(
         string='Karşılaştırma', compute='_compute_gib_karsilastirma_html', sanitize=False,
     )
@@ -167,7 +168,7 @@ class GuvenLogoFatura(models.Model):
     @api.depends(
         'gib_fatura_count', 'gib_kimlik',
         'tutar_farki_var', 'tutar_farki', 'kimlik_farkli',
-        'fatura_tarihi_farkli',
+        'fatura_tarihi_farkli', 'yon_farkli',
     )
     def _compute_gib_karsilastirma_html(self):
         for rec in self:
@@ -198,6 +199,12 @@ class GuvenLogoFatura(models.Model):
             checks.append(('Tarih', 'Farklı', '#ef4444', '#fef2f2'))
         else:
             checks.append(('Tarih', 'Eşit', '#10b981', '#f0fdf4'))
+
+        # Yön
+        if self.yon_farkli:
+            checks.append(('Yön', 'Farklı', '#ef4444', '#fef2f2'))
+        else:
+            checks.append(('Yön', 'Eşit', '#10b981', '#f0fdf4'))
 
         badges = ''
         for label, value, color, bg in checks:
@@ -259,12 +266,22 @@ class GuvenLogoFatura(models.Model):
             and gib_rec.issue_date != logo_tarihi
         )
 
+        # Yön farkı
+        logo_direction = self._TRCODE_DIRECTION.get(logo_rec.fatura_tipi)
+        gib_direction = gib_rec.direction
+        yon_farkli = bool(
+            logo_direction and gib_direction
+            and logo_direction != gib_direction
+        )
+
         if tutar_farki_var:
             stats['tutar_farki'] += 1
         if kimlik_farkli:
             stats['kimlik_farkli'] += 1
         if fatura_tarihi_farkli:
             stats['fatura_tarihi_farkli'] += 1
+        if yon_farkli:
+            stats['yon_farkli'] += 1
 
         logo_rec.write({
             'gib_fatura_ids': [(6, 0, [gib_rec.id])],
@@ -278,6 +295,7 @@ class GuvenLogoFatura(models.Model):
             'tutar_farki': round(farki, 2),
             'kimlik_farkli': kimlik_farkli,
             'fatura_tarihi_farkli': fatura_tarihi_farkli,
+            'yon_farkli': yon_farkli,
             'gib_notes': False,
         })
 
@@ -302,6 +320,7 @@ class GuvenLogoFatura(models.Model):
             'tutar_farki': 0,
             'kimlik_farkli': 0,
             'fatura_tarihi_farkli': 0,
+            'yon_farkli': 0,
         }
 
         # 1. Logo kayıtlarını tarih aralığına göre al
@@ -315,11 +334,26 @@ class GuvenLogoFatura(models.Model):
             return stats
         stats['total'] = len(logo_recs)
 
-        # 2. GİB faturalarını yükle (gvn_active=True, ilgili şirketler)
-        gib_recs = GibFatura.search([
-            ('gvn_active', '=', True),
-            ('company_id', 'in', company_ids),
-        ])
+        # 2. GİB faturalarını ±30 gün tarih filtresiyle yükle
+        buffer_days = timedelta(days=30)
+        all_dates = []
+        for lr in logo_recs:
+            if lr.fatura_tarihi_1:
+                all_dates.append(lr.fatura_tarihi_1)
+            if lr.fatura_tarihi_2:
+                all_dates.append(lr.fatura_tarihi_2)
+
+        if all_dates:
+            gib_date_from = min(all_dates) - buffer_days
+            gib_date_to = max(all_dates) + buffer_days
+            gib_recs = GibFatura.search([
+                ('gvn_active', '=', True),
+                ('company_id', 'in', company_ids),
+                ('issue_date', '>=', gib_date_from),
+                ('issue_date', '<=', gib_date_to),
+            ])
+        else:
+            gib_recs = GibFatura.browse()
 
         # 3. Lookup dict: (company_id, invoice_id) → [guven.fatura, ...]
         gib_by_invoice_id = {}
@@ -358,6 +392,7 @@ class GuvenLogoFatura(models.Model):
                     'tutar_farki': 0.0,
                     'kimlik_farkli': False,
                     'fatura_tarihi_farkli': False,
+                    'yon_farkli': False,
                     'gib_notes': False,
                 })
 
@@ -405,6 +440,48 @@ class GuvenLogoFatura(models.Model):
                             f"Tarih: {tarih_str}"
                         )
 
+                    # Çoklu eşleşmede de fark analizi (ilk eşleşme referans)
+                    ref = final_matches[0]
+                    logo_tutar = logo_rec.fatura_tutari or 0.0
+                    ref_tutar = ref.payable_amount_try or 0.0
+                    farki = logo_tutar - ref_tutar
+                    m_tutar_farki = abs(farki) > 0.005
+
+                    logo_tarihi = logo_rec.fatura_tarihi_1 or logo_rec.fatura_tarihi_2
+                    m_tarih_farkli = bool(
+                        ref.issue_date and logo_tarihi
+                        and ref.issue_date != logo_tarihi
+                    )
+
+                    if direction == 'IN':
+                        ref_kimlik = (ref.sender or '').strip()
+                    elif direction == 'OUT':
+                        ref_kimlik = (ref.receiver or '').strip()
+                    else:
+                        ref_kimlik = (ref.sender or ref.receiver or '').strip()
+                    kimlik_eslesti = (
+                        (logo_vkn and ref_kimlik == logo_vkn)
+                        or (logo_tckn and ref_kimlik == logo_tckn)
+                    )
+                    m_kimlik_farkli = bool(
+                        ref_kimlik and (logo_vkn or logo_tckn) and not kimlik_eslesti
+                    )
+
+                    ref_direction = ref.direction
+                    m_yon_farkli = bool(
+                        direction and ref_direction
+                        and direction != ref_direction
+                    )
+
+                    if m_tutar_farki:
+                        stats['tutar_farki'] += 1
+                    if m_kimlik_farkli:
+                        stats['kimlik_farkli'] += 1
+                    if m_tarih_farkli:
+                        stats['fatura_tarihi_farkli'] += 1
+                    if m_yon_farkli:
+                        stats['yon_farkli'] += 1
+
                     logo_rec.write({
                         'gib_fatura_ids': [(6, 0, [gr.id for gr in final_matches])],
                         'gib_fatura_count': final_count,
@@ -413,10 +490,11 @@ class GuvenLogoFatura(models.Model):
                         'gib_fatura_tutari': 0.0,
                         'gib_kimlik': False,
                         'gib_kaynak': False,
-                        'tutar_farki_var': False,
-                        'tutar_farki': 0.0,
-                        'kimlik_farkli': False,
-                        'fatura_tarihi_farkli': False,
+                        'tutar_farki_var': m_tutar_farki,
+                        'tutar_farki': round(farki, 2),
+                        'kimlik_farkli': m_kimlik_farkli,
+                        'fatura_tarihi_farkli': m_tarih_farkli,
+                        'yon_farkli': m_yon_farkli,
                         'gib_notes': '\n'.join(lines),
                     })
 

@@ -214,8 +214,8 @@
                                 <field name="logo_karsilastirma_html" readonly="1" nolabel="1"/>
                                 <separator string="Eşleşen Logo Faturaları"/>
                                 <field name="logo_fatura_ids" readonly="1" nolabel="1">
-                                    <list decoration-success="gib_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli"
-                                          decoration-danger="gib_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli">
+                                    <list decoration-success="gib_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli and not yon_farkli"
+                                          decoration-danger="gib_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli or yon_farkli">
                                         <field name="fatura_no_1"/>
                                         <field name="fatura_no_2"/>
                                         <field name="fatura_tipi"/>
@@ -228,6 +228,7 @@
                                         <field name="tutar_farki_var" string="Tutar ✗" widget="boolean"/>
                                         <field name="kimlik_farkli" string="Kimlik ✗" widget="boolean"/>
                                         <field name="fatura_tarihi_farkli" string="Tarih ✗" widget="boolean"/>
+                                        <field name="yon_farkli" string="Yön ✗" widget="boolean"/>
                                     </list>
                                 </field>
                                 <field name="logo_notes" readonly="1"/>
@@ -263,8 +264,8 @@
                 <list string="GİB → Logo Eşleştirme"
                       class="o_logo_eslestirme"
                       default_order="issue_date desc, invoice_id desc"
-                      decoration-success="logo_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli"
-                      decoration-danger="logo_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli"
+                      decoration-success="logo_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli and not yon_farkli"
+                      decoration-danger="logo_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli or yon_farkli"
                       create="0" delete="0">
                     <field name="direction"/>
                     <field name="kaynak"/>
@@ -276,6 +277,7 @@
                     <field name="tutar_farki" string="Tutar Farkı" widget="float" options="{'digits': [16, 2]}"/>
                     <field name="kimlik_farkli" string="Kimlik ✗" widget="boolean"/>
                     <field name="fatura_tarihi_farkli" string="Tarih ✗" widget="boolean"/>
+                    <field name="yon_farkli" string="Yön ✗" widget="boolean"/>
                     <field name="logo_fatura_tarihi"/>
                     <field name="logo_fatura_tutari" string="Logo Tutar" widget="float" options="{'digits': [16, 2]}"/>
                     <field name="logo_fatura_vkn"/>
@@ -303,12 +305,14 @@
                     <filter name="filter_tutar_farki" string="Tutar Farkı" domain="[('tutar_farki_var', '=', True)]"/>
                     <filter name="filter_kimlik_farkli" string="Kimlik Farklı" domain="[('kimlik_farkli', '=', True)]"/>
                     <filter name="filter_tarih_farkli" string="Tarih Farklı" domain="[('fatura_tarihi_farkli', '=', True)]"/>
+                    <filter name="filter_yon_farkli" string="Yön Farklı" domain="[('yon_farkli', '=', True)]"/>
                     <separator/>
                     <filter name="filter_tutar_ayni" string="Tutar Aynı" domain="[('tutar_farki_var', '=', False)]"/>
                     <separator/>
                     <filter name="filter_kimlik_ayni" string="Kimlik Aynı" domain="[('kimlik_farkli', '=', False)]"/>
                     <separator/>
                     <filter name="filter_tarih_ayni" string="Tarih Aynı" domain="[('fatura_tarihi_farkli', '=', False)]"/>
+                    <filter name="filter_yon_ayni" string="Yön Aynı" domain="[('yon_farkli', '=', False)]"/>
                     <separator/>
                     <filter name="filter_incoming" string="Gelen" domain="[('direction', '=', 'IN')]"/>
                     <filter name="filter_outgoing" string="Giden" domain="[('direction', '=', 'OUT')]"/>

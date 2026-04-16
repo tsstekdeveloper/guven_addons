@@ -185,6 +185,7 @@ class GuvenFatura(models.Model):
     tutar_farki = fields.Float(string='Tutar Farkı', digits=(16, 8), copy=False)
     kimlik_farkli = fields.Boolean(string='Kimlik Farklı', default=False, copy=False)
     fatura_tarihi_farkli = fields.Boolean(string='Tarih Farklı', default=False, copy=False)
+    yon_farkli = fields.Boolean(string='Yön Farklı', default=False, copy=False)
     logo_karsilastirma_html = fields.Html(
         string='Karşılaştırma', compute='_compute_logo_karsilastirma_html',
         sanitize=False,
@@ -311,7 +312,7 @@ class GuvenFatura(models.Model):
     @api.depends(
         'logo_fatura_count', 'logo_fatura_vkn', 'logo_fatura_tckn',
         'tutar_farki_var', 'tutar_farki', 'kimlik_farkli',
-        'fatura_tarihi_farkli',
+        'fatura_tarihi_farkli', 'yon_farkli',
     )
     def _compute_logo_karsilastirma_html(self):
         for rec in self:
@@ -343,6 +344,12 @@ class GuvenFatura(models.Model):
             checks.append(('Tarih', 'Farklı', '#ef4444', '#fef2f2'))
         else:
             checks.append(('Tarih', 'Eşit', '#10b981', '#f0fdf4'))
+
+        # Yön
+        if self.yon_farkli:
+            checks.append(('Yön', 'Farklı', '#ef4444', '#fef2f2'))
+        else:
+            checks.append(('Yön', 'Eşit', '#10b981', '#f0fdf4'))
 
         badges = ''
         for label, value, color, bg in checks:
@@ -1748,27 +1755,43 @@ class GuvenFatura(models.Model):
             and fatura.issue_date != logo_tarihi
         )
 
+        # Yön farkı
+        LogoFatura = self.env['guven.logo.fatura']
+        logo_direction = LogoFatura._TRCODE_DIRECTION.get(lr.fatura_tipi)
+        yon_farkli = bool(
+            logo_direction and fatura.direction
+            and logo_direction != fatura.direction
+        )
+
         if tutar_farki_var:
             stats['tutar_farki'] += 1
         if kimlik_farkli:
             stats['kimlik_farkli'] += 1
         if fatura_tarihi_farkli:
             stats['fatura_tarihi_farkli'] += 1
+        if yon_farkli:
+            stats['yon_farkli'] += 1
 
-        fatura.write({
-            'logo_fatura_ids': [(6, 0, [lr.id])],
-            'logo_fatura_count': 1,
-            'logo_mssql_id': lr.logo_id,
-            'logo_fatura_tarihi': lr.fatura_tarihi_1 or lr.fatura_tarihi_2,
-            'logo_fatura_tutari': logo_tutar,
-            'logo_fatura_vkn': logo_vkn or False,
-            'logo_fatura_tckn': logo_tckn or False,
-            'tutar_farki_var': tutar_farki_var,
-            'tutar_farki': round(farki, 2),
-            'kimlik_farkli': kimlik_farkli,
-            'fatura_tarihi_farkli': fatura_tarihi_farkli,
-            'logo_notes': False,
-        })
+        try:
+            fatura.write({
+                'logo_fatura_ids': [(6, 0, [lr.id])],
+                'logo_fatura_count': 1,
+                'logo_mssql_id': lr.logo_id,
+                'logo_fatura_tarihi': lr.fatura_tarihi_1 or lr.fatura_tarihi_2,
+                'logo_fatura_tutari': logo_tutar,
+                'logo_fatura_vkn': logo_vkn or False,
+                'logo_fatura_tckn': logo_tckn or False,
+                'tutar_farki_var': tutar_farki_var,
+                'tutar_farki': round(farki, 2),
+                'kimlik_farkli': kimlik_farkli,
+                'fatura_tarihi_farkli': fatura_tarihi_farkli,
+                'yon_farkli': yon_farkli,
+                'logo_notes': False,
+            })
+        except UserError:
+            _logger.warning(
+                "[GUVEN-MATCH] Kilitli kayıt atlandı: %s", fatura.invoice_id,
+            )
 
     @api.model
     def _match_logo_invoices(self, date_from, date_to, company_ids):
@@ -1788,6 +1811,7 @@ class GuvenFatura(models.Model):
             'tutar_farki': 0,
             'kimlik_farkli': 0,
             'fatura_tarihi_farkli': 0,
+            'yon_farkli': 0,
         }
 
         # 1. İlgili guven.fatura kayıtlarını al
@@ -1801,9 +1825,15 @@ class GuvenFatura(models.Model):
             return stats
         stats['total'] = len(faturas)
 
-        # 2. İlgili şirketlerin tüm Logo kayıtlarını bir seferde yükle (N+1 önleme)
+        # 2. Logo kayıtlarını ±30 gün tarih filtresiyle yükle
+        buffer_days = timedelta(days=30)
         logo_recs = LogoFatura.search([
             ('company_id', 'in', company_ids),
+            '|',
+            '&', ('fatura_tarihi_1', '>=', date_from - buffer_days),
+                 ('fatura_tarihi_1', '<=', date_to + buffer_days),
+            '&', ('fatura_tarihi_2', '>=', date_from - buffer_days),
+                 ('fatura_tarihi_2', '<=', date_to + buffer_days),
         ])
 
         # 3. Lookup dict'leri oluştur: (company_id, fatura_no) → [records]
@@ -1833,20 +1863,26 @@ class GuvenFatura(models.Model):
             if match_count == 0:
                 # Eşleşme yok — Logo alanlarını temizle
                 stats['unmatched'] += 1
-                fatura.write({
-                    'logo_fatura_ids': [(5, 0, 0)],
-                    'logo_fatura_count': 0,
-                    'logo_mssql_id': False,
-                    'logo_fatura_tarihi': False,
-                    'logo_fatura_tutari': 0.0,
-                    'logo_fatura_vkn': False,
-                    'logo_fatura_tckn': False,
-                    'tutar_farki_var': False,
-                    'tutar_farki': 0.0,
-                    'kimlik_farkli': False,
-                    'fatura_tarihi_farkli': False,
-                    'logo_notes': False,
-                })
+                try:
+                    fatura.write({
+                        'logo_fatura_ids': [(5, 0, 0)],
+                        'logo_fatura_count': 0,
+                        'logo_mssql_id': False,
+                        'logo_fatura_tarihi': False,
+                        'logo_fatura_tutari': 0.0,
+                        'logo_fatura_vkn': False,
+                        'logo_fatura_tckn': False,
+                        'tutar_farki_var': False,
+                        'tutar_farki': 0.0,
+                        'kimlik_farkli': False,
+                        'fatura_tarihi_farkli': False,
+                        'yon_farkli': False,
+                        'logo_notes': False,
+                    })
+                except UserError:
+                    _logger.warning(
+                        "[GUVEN-MATCH] Kilitli kayıt atlandı: %s", fatura.invoice_id,
+                    )
 
             elif match_count == 1:
                 # Tek eşleşme — detay alanlarını doldur, fark analizi yap
@@ -1891,19 +1927,64 @@ class GuvenFatura(models.Model):
                             f"Tarih: {tarih_str}"
                         )
 
-                    fatura.write({
-                        'logo_fatura_ids': [(6, 0, [lr.id for lr in final_matches])],
-                        'logo_fatura_count': final_count,
-                        'logo_mssql_id': False,
-                        'logo_fatura_tarihi': False,
-                        'logo_fatura_tutari': 0.0,
-                        'logo_fatura_vkn': False,
-                        'logo_fatura_tckn': False,
-                        'tutar_farki_var': False,
-                        'tutar_farki': 0.0,
-                        'kimlik_farkli': False,
-                        'fatura_tarihi_farkli': False,
-                        'logo_notes': '\n'.join(lines),
-                    })
+                    # Çoklu eşleşmede de fark analizi (ilk eşleşme referans)
+                    ref = final_matches[0]
+                    ref_tutar = ref.fatura_tutari or 0.0
+                    efatura_tutar = fatura.payable_amount_try or 0.0
+                    farki = efatura_tutar - ref_tutar
+                    m_tutar_farki = abs(farki) > 0.005
+
+                    ref_tarihi = ref.fatura_tarihi_1 or ref.fatura_tarihi_2
+                    m_tarih_farkli = bool(
+                        fatura.issue_date and ref_tarihi
+                        and fatura.issue_date != ref_tarihi
+                    )
+
+                    ref_vkn = (ref.vkn or '').strip()
+                    ref_tckn = (ref.tckn or '').strip()
+                    kimlik_eslesti = (
+                        (ref_vkn and gib_vkn == ref_vkn)
+                        or (ref_tckn and gib_vkn == ref_tckn)
+                    )
+                    m_kimlik_farkli = bool(
+                        gib_vkn and (ref_vkn or ref_tckn) and not kimlik_eslesti
+                    )
+
+                    ref_direction = LogoFatura._TRCODE_DIRECTION.get(ref.fatura_tipi)
+                    m_yon_farkli = bool(
+                        ref_direction and fatura.direction
+                        and ref_direction != fatura.direction
+                    )
+
+                    if m_tutar_farki:
+                        stats['tutar_farki'] += 1
+                    if m_kimlik_farkli:
+                        stats['kimlik_farkli'] += 1
+                    if m_tarih_farkli:
+                        stats['fatura_tarihi_farkli'] += 1
+                    if m_yon_farkli:
+                        stats['yon_farkli'] += 1
+
+                    try:
+                        fatura.write({
+                            'logo_fatura_ids': [(6, 0, [lr.id for lr in final_matches])],
+                            'logo_fatura_count': final_count,
+                            'logo_mssql_id': False,
+                            'logo_fatura_tarihi': False,
+                            'logo_fatura_tutari': 0.0,
+                            'logo_fatura_vkn': False,
+                            'logo_fatura_tckn': False,
+                            'tutar_farki_var': m_tutar_farki,
+                            'tutar_farki': round(farki, 2),
+                            'kimlik_farkli': m_kimlik_farkli,
+                            'fatura_tarihi_farkli': m_tarih_farkli,
+                            'yon_farkli': m_yon_farkli,
+                            'logo_notes': '\n'.join(lines),
+                        })
+                    except UserError:
+                        _logger.warning(
+                            "[GUVEN-MATCH] Kilitli kayıt atlandı: %s",
+                            fatura.invoice_id,
+                        )
 
         return stats
