@@ -1472,7 +1472,7 @@ class GuvenFatura(models.Model):
     @api.model
     def _do_fetch_invoice_details(self):
         """E-fatura XML detay çekme iç implementasyonu."""
-        BATCH_SIZE = 100
+        BATCH_SIZE = 1000
         COMMIT_EVERY = 50
 
         # Bekleyen faturası olan şirketleri bul
@@ -1559,7 +1559,7 @@ class GuvenFatura(models.Model):
     @api.model
     def _do_fetch_earsiv_details(self):
         """E-arşiv XML detay çekme iç implementasyonu."""
-        BATCH_SIZE = 100
+        BATCH_SIZE = 1000
         COMMIT_EVERY = 50
 
         # Bekleyen faturası olan şirketleri bul

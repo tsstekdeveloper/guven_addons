@@ -44,5 +44,11 @@
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
 
+        <record id="guven_logo_donem_comp_rule" model="ir.rule">
+            <field name="name">Logo Dönem: şirket izolasyonu</field>
+            <field name="model_id" ref="model_guven_logo_donem"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
     </data>
 </odoo>

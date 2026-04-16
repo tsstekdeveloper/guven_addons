@@ -91,53 +91,76 @@
                     <page string="Logo MSSQL Ayarları"
                           name="logo_mssql"
                           groups="guven_fatura_analiz.group_muhasebe_calisani">
-                        <group string="Firma / Sunucu Bilgileri">
-                            <group>
-                                <field name="logo_firma_kodu"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_mssql_server"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_mssql_port"
-                                       readonly="not can_edit_fatura_settings"/>
-                            </group>
-                            <group>
-                                <field name="logo_mssql_database"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_mssql_username"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_mssql_password"
-                                       password="True"
-                                       readonly="not can_edit_fatura_settings"/>
-                            </group>
-                        </group>
-                        <group string="Tablo Ayarları">
-                            <group>
-                                <field name="logo_invoice_table"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_clcard_table"
-                                       readonly="not can_edit_fatura_settings"/>
-                            </group>
-                        </group>
-                        <group string="Senkronizasyon">
-                            <group>
-                                <field name="logo_auto_sync"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_sync_lookback_days"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_sync_cursor_date"
-                                       readonly="not can_edit_fatura_settings"/>
-                                <field name="logo_sync_last_completed_date"
-                                       readonly="1"/>
-                            </group>
-                        </group>
-                        <div>
-                            <button name="action_test_logo_connection"
-                                    type="object"
-                                    string="Bağlantıyı Test Et"
-                                    class="btn-primary"
-                                    icon="fa-plug"
-                                    groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
-                        </div>
+                        <notebook>
+
+                            <!-- Nested Tab 1: Bağlantı Ayarları -->
+                            <page string="Bağlantı Ayarları" name="logo_baglanti">
+                                <group string="Firma / Sunucu Bilgileri">
+                                    <group>
+                                        <field name="logo_firma_kodu"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_mssql_server"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_mssql_port"
+                                               readonly="not can_edit_fatura_settings"/>
+                                    </group>
+                                    <group>
+                                        <field name="logo_mssql_database"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_mssql_username"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_mssql_password"
+                                               password="True"
+                                               readonly="not can_edit_fatura_settings"/>
+                                    </group>
+                                </group>
+                                <group string="Tablo Ayarları">
+                                    <group>
+                                        <field name="logo_invoice_table"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_clcard_table"
+                                               readonly="not can_edit_fatura_settings"/>
+                                    </group>
+                                </group>
+                                <div>
+                                    <button name="action_test_logo_connection"
+                                            type="object"
+                                            string="Bağlantıyı Test Et"
+                                            class="btn-primary"
+                                            icon="fa-plug"
+                                            groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
+                                </div>
+                            </page>
+
+                            <!-- Nested Tab 2: Senkronizasyon -->
+                            <page string="Senkronizasyon" name="logo_senkronizasyon">
+                                <group string="Senkronizasyon">
+                                    <group>
+                                        <field name="logo_auto_sync"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_sync_lookback_days"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_sync_cursor_date"
+                                               readonly="not can_edit_fatura_settings"/>
+                                        <field name="logo_sync_last_completed_date"
+                                               readonly="1"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Nested Tab 3: Logo Dönemleri -->
+                            <page string="Logo Dönemleri" name="logo_donemleri">
+                                <field name="logo_donem_ids" nolabel="1"
+                                       readonly="not can_edit_fatura_settings">
+                                    <list editable="bottom">
+                                        <field name="logo_firma_kodu"/>
+                                        <field name="baslangic_tarihi"/>
+                                        <field name="bitis_tarihi"/>
+                                    </list>
+                                </field>
+                            </page>
+
+                        </notebook>
                     </page>
 
                 </page>

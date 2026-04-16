@@ -44,6 +44,10 @@ access_guven_qnb_import_wizard_sorumlusu,guven.qnb.import.wizard.sorumlusu,model
 access_guven_qnb_import_wizard_yoneticisi,guven.qnb.import.wizard.yoneticisi,model_guven_qnb_import_wizard,group_muhasebe_yoneticisi,1,1,1,1
 access_guven_qnb_import_file_sorumlusu,guven.qnb.import.file.sorumlusu,model_guven_qnb_import_file,group_muhasebe_sorumlusu,1,1,1,0
 access_guven_qnb_import_file_yoneticisi,guven.qnb.import.file.yoneticisi,model_guven_qnb_import_file,group_muhasebe_yoneticisi,1,1,1,1
+access_guven_logo_donem_yoneticisi,guven.logo.donem.yoneticisi,model_guven_logo_donem,group_muhasebe_yoneticisi,1,1,1,1
+access_guven_logo_donem_sorumlusu,guven.logo.donem.sorumlusu,model_guven_logo_donem,group_muhasebe_sorumlusu,1,1,1,0
+access_guven_logo_donem_uzmani,guven.logo.donem.uzmani,model_guven_logo_donem,group_muhasebe_uzmani,1,0,0,0
+access_guven_logo_donem_calisani,guven.logo.donem.calisani,model_guven_logo_donem,group_muhasebe_calisani,1,0,0,0
 access_guven_vergi_analiz_yoneticisi,guven.vergi.analiz.yoneticisi,model_guven_vergi_analiz,group_muhasebe_yoneticisi,1,1,1,1
 access_guven_vergi_analiz_sorumlusu,guven.vergi.analiz.sorumlusu,model_guven_vergi_analiz,group_muhasebe_sorumlusu,1,0,0,0
 access_guven_vergi_analiz_uzmani,guven.vergi.analiz.uzmani,model_guven_vergi_analiz,group_muhasebe_uzmani,1,0,0,0

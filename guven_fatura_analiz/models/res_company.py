@@ -113,6 +113,11 @@ class ResCompany(models.Model):
         help='Logo sync cron en son bu tarih için tam bir tur tamamladı. '
              'Sistem tarafından otomatik yönetilir.',
     )
+    logo_donem_ids = fields.One2many(
+        'guven.logo.donem',
+        'company_id',
+        string='Logo Dönemleri',
+    )
 
     # ==================================================================
     # CRON SYNC CURSOR
