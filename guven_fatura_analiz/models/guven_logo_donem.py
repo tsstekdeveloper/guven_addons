@@ -41,3 +41,27 @@ class GuvenLogoDonem(models.Model):
                 raise ValidationError(
                     _("Bitiş tarihi başlangıç tarihinden önce olamaz.")
                 )
+
+    @api.model
+    def logo_firma_kodu_ver(self, company_id, tarih):
+        """Return the Logo firm code for a company at a given date.
+
+        Args:
+            company_id: res.company record or recordset (single)
+            tarih: date or string (YYYY-MM-DD)
+
+        Returns:
+            str: Logo firma kodu (e.g. '600') or False if no matching period
+        """
+        if isinstance(tarih, str):
+            tarih = fields.Date.from_string(tarih)
+
+        donem = self.sudo().search([
+            ('company_id', '=', company_id.id),
+            ('baslangic_tarihi', '<=', tarih),
+            '|',
+            ('bitis_tarihi', '>=', tarih),
+            ('bitis_tarihi', '=', False),
+        ], limit=1)
+
+        return donem.logo_firma_kodu if donem else False
