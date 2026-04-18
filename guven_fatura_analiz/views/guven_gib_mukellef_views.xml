@@ -19,9 +19,16 @@
                             domain="[('kaynak', '=', 'gib')]"/>
                     <filter name="filter_logo" string="LOGO"
                             domain="[('kaynak', '=', 'logo')]"/>
+                    <separator/>
+                    <filter name="filter_firma" string="Firma"
+                            domain="[('tip', '=', 'firma')]"/>
+                    <filter name="filter_sahis" string="Şahıs"
+                            domain="[('tip', '=', 'sahis')]"/>
                     <group>
                         <filter name="group_kaynak" string="Kaynak"
                                 context="{'group_by': 'kaynak'}"/>
+                        <filter name="group_tip" string="Tip"
+                                context="{'group_by': 'tip'}"/>
                     </group>
                 </search>
             </field>
@@ -37,6 +44,7 @@
                 <list create="0" edit="0" delete="0"
                       default_order="title">
                     <field name="identifier" string="VKN/TCKN"/>
+                    <field name="tip" string="Tip"/>
                     <field name="title" string="Ünvan"/>
                     <field name="kaynak" string="Kaynak"/>
                 </list>
@@ -63,6 +71,7 @@
                         </div>
                         <group>
                             <field name="identifier" readonly="1"/>
+                            <field name="tip" readonly="1"/>
                             <field name="title" readonly="1"/>
                             <field name="kaynak" readonly="1"/>
                         </group>

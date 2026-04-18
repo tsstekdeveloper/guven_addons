@@ -36,6 +36,28 @@ class GuvenGibMukellef(models.Model):
         default='izibiz',
         index=True,
     )
+    tip = fields.Selection(
+        selection=[
+            ('firma', 'Firma'),
+            ('sahis', 'Şahıs'),
+        ],
+        string='Tip',
+        compute='_compute_tip',
+        store=True,
+        index=True,
+        help='VKN (10 basamak) → Firma, TCKN (11 basamak) → Şahıs',
+    )
+
+    @api.depends('identifier')
+    def _compute_tip(self):
+        for rec in self:
+            ident = (rec.identifier or '').strip()
+            if len(ident) == 10:
+                rec.tip = 'firma'
+            elif len(ident) == 11:
+                rec.tip = 'sahis'
+            else:
+                rec.tip = False
 
     # ── Computed fatura ilişkileri (read-only, sayım + liste gösterimi) ──
     gib_fatura_gelen_ids = fields.Many2many(
