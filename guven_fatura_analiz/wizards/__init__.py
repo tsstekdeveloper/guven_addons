@@ -5,3 +5,4 @@ from . import guven_muhtasar_wizard
 from . import guven_earsiv_import_wizard
 from . import guven_fatura_lock_wizard
 from . import guven_qnb_import_wizard
+from . import guven_gib_mukellef_sync_wizard

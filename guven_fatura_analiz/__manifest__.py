@@ -22,6 +22,8 @@
         'views/guven_fatura_views.xml',
         'views/guven_fatura_sync_wizard_views.xml',
         'views/guven_logo_fatura_views.xml',
+        'views/guven_gib_mukellef_views.xml',
+        'views/guven_gib_mukellef_sync_wizard_views.xml',
         'views/guven_logo_sync_wizard_views.xml',
         'views/guven_kdv2_views.xml',
         'views/guven_muhtasar_views.xml',

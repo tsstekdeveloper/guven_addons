@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="guven_gib_mukellef_sync_wizard_view_form" model="ir.ui.view">
+            <field name="name">guven.gib.mukellef.sync.wizard.form</field>
+            <field name="model">guven.gib.mukellef.sync.wizard</field>
+            <field name="arch" type="xml">
+                <form string="izibiz Mükellef Kaydı Güncelleme">
+                    <group invisible="state != 'draft'">
+                        <group>
+                            <field name="sync_mode" widget="radio"/>
+                            <field name="document_type"/>
+                        </group>
+                        <group>
+                            <field name="last_sync_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <div invisible="state != 'done'">
+                        <field name="report_html" nolabel="1"/>
+                    </div>
+                    <field name="state" invisible="1"/>
+                    <footer>
+                        <button string="Güncelle"
+                                name="action_sync"
+                                type="object"
+                                class="btn-primary"
+                                invisible="state != 'draft'"/>
+                        <button string="Kapat"
+                                name="action_close"
+                                type="object"
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_guven_gib_mukellef_sync_wizard" model="ir.actions.act_window">
+            <field name="name">izibiz Mükellef Kaydı Güncelleme</field>
+            <field name="res_model">guven.gib.mukellef.sync.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="context">{'dialog_size': 'extra-large'}</field>
+        </record>
+
+    </data>
+</odoo>
