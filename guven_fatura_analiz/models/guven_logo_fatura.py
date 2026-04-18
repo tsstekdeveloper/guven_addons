@@ -713,8 +713,33 @@ class GuvenLogoFatura(models.Model):
 
             if to_create:
                 self.with_company(company).create(to_create)
+
+            # DEBUG: Hangi alanların değiştiğini say (geçici teşhis)
+            field_change_count = {}
+            sample_diffs = []
             for rec, changed in to_update:
+                for k in changed:
+                    field_change_count[k] = field_change_count.get(k, 0) + 1
+                # İlk 5 kayıt için "öncesi → sonrası" örneği
+                if len(sample_diffs) < 5:
+                    diff = {
+                        k: (rec[k], changed[k])
+                        for k in changed
+                    }
+                    sample_diffs.append((rec.logo_id, diff))
                 rec.write(changed)
+
+            if to_update:
+                _logger.info(
+                    "[GUVEN-LOGO-DEBUG] %s: %s kayıt güncellendi. "
+                    "Alan bazında: %s",
+                    company.name, len(to_update), field_change_count,
+                )
+                for logo_id, diff in sample_diffs:
+                    _logger.info(
+                        "[GUVEN-LOGO-DEBUG]   Örnek logo_id=%s: %s",
+                        logo_id, diff,
+                    )
 
         # ── Orphan tespiti: Logo'da silinen kayıtları Odoo'dan temizle ──
         all_odoo_in_range = self.with_company(company).search([
