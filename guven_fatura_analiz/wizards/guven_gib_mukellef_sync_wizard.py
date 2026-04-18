@@ -35,6 +35,13 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
         string='Son Sync Tarihi',
         compute='_compute_last_sync_date',
     )
+    max_iterations = fields.Integer(
+        string='Maksimum İterasyon',
+        default=200,
+        help='izibiz her çağrıda 100 kayıt döner. Bu sayı kadar çağrı yapılır '
+             '(örn. 200 x 100 = 20.000 kayıt). Çalışma timeout olursa tekrar '
+             'tetikleyin; kaldığı yerden devam eder.',
+    )
 
     state = fields.Selection(
         [('draft', 'Bekliyor'), ('done', 'Tamamlandı')],
@@ -46,6 +53,13 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
     total_created = fields.Integer(string='Yeni', readonly=True)
     total_updated = fields.Integer(string='Güncellenen', readonly=True)
     total_deleted_mark = fields.Integer(string='Silinmiş İşaretlenen', readonly=True)
+    total_iterations = fields.Integer(string='Yapılan İterasyon', readonly=True)
+    finished = fields.Boolean(
+        string='Tamamlandı (Son Sayfa)',
+        readonly=True,
+        help='True: tüm liste çekildi. False: max iterasyon sınırına ulaşıldı, '
+             'tekrar çalıştırarak devam edin.',
+    )
     log_messages = fields.Text(string='İşlem Logları', readonly=True)
     report_html = fields.Html(
         string='Rapor',
@@ -68,7 +82,8 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
 
     @api.depends(
         'state', 'total_fetched', 'total_created', 'total_updated',
-        'total_deleted_mark', 'sync_mode', 'document_type',
+        'total_deleted_mark', 'total_iterations', 'finished',
+        'sync_mode', 'document_type',
     )
     def _compute_report_html(self):
         for rec in self:
@@ -103,65 +118,141 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
             GibFatura._get_soap_client_and_login(company)
 
         try:
-            # 2. Request parametreleri
-            # izibiz WSDL imzası: REQUEST_HEADER, REGISTER_TIME_START, DOCUMENT_TYPE
-            # DOCUMENT_TYPE: INVOICE, DESPATCHADVICE (boş = hepsi)
+            # 2. Cursor pagination: izibiz her çağrıda max 100 kayıt döner
+            # Strateji: REGISTER_TIME_START'ı iteratif ilerlet
             doc_type = self.document_type if self.document_type != 'ALL' else None
-            soap_args = {
-                'REQUEST_HEADER': request_header,
-            }
-            if doc_type:
-                soap_args['DOCUMENT_TYPE'] = doc_type
-            if self.sync_mode == 'delta':
-                start_date = self.last_sync_date or (
-                    fields.Datetime.now() - timedelta(days=7)
+
+            # Başlangıç cursor'ı belirle
+            if self.sync_mode == 'full':
+                # "Tamamı" modu — DB'deki en yeni REGISTER_TIME'dan devam et,
+                # yoksa 2013-01-01'den başla. Bu sayede aynı modül birden
+                # fazla çağrıda tamamlanabilir.
+                self.env.cr.execute(
+                    "SELECT MAX(register_time) FROM guven_gib_mukellef"
                 )
-                soap_args['REGISTER_TIME_START'] = start_date
+                row = self.env.cr.fetchone()
+                cursor = row[0] if row and row[0] else datetime(2013, 1, 1)
                 log_lines.append(
-                    f"Delta sync: REGISTER_TIME_START = "
-                    f"{start_date.strftime('%Y-%m-%d %H:%M:%S')}"
+                    f"Tam sync: cursor başlangıcı "
+                    f"{cursor.strftime('%Y-%m-%d %H:%M:%S')}"
                 )
             else:
-                log_lines.append("Tam sync: tüm liste çekiliyor (uzun sürebilir)")
+                # Delta: last_synced_at'ten başla (fallback: son 7 gün)
+                cursor = self.last_sync_date or (
+                    fields.Datetime.now() - timedelta(days=7)
+                )
+                log_lines.append(
+                    f"Delta sync: cursor başlangıcı "
+                    f"{cursor.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+            log_lines.append(f"DOCUMENT_TYPE = {doc_type or 'ALL (hepsi)'}")
+            log_lines.append(f"Max iterasyon: {self.max_iterations}")
+
+            # Transport timeout (her iterasyon ~12sn)
+            client.transport.load_timeout = 300
+            client.transport.operation_timeout = 300
+
+            totals = {'fetched': 0, 'created': 0, 'updated': 0, 'deleted_mark': 0}
+            iteration = 0
+            finished = False
+            last_cursor = cursor
+
+            while iteration < self.max_iterations:
+                iteration += 1
+                soap_args = {
+                    'REQUEST_HEADER': request_header,
+                    'REGISTER_TIME_START': cursor,
+                }
+                if doc_type:
+                    soap_args['DOCUMENT_TYPE'] = doc_type
+
+                _logger.info(
+                    "[GUVEN-MUKELLEF] İterasyon %s/%s, cursor=%s",
+                    iteration, self.max_iterations,
+                    cursor.strftime('%Y-%m-%d %H:%M:%S'),
+                )
+                with client.settings(raw_response=True):
+                    raw = client.service.GetUserList(**soap_args)
+
+                user_records = self._parse_users(raw.content)
+                if not user_records:
+                    finished = True
+                    log_lines.append(
+                        f"[İt-{iteration}] Boş cevap, bittik."
+                    )
+                    break
+
+                # Cursor ilerlet: gelen kayıtların en büyük register_time'ı + 1sn
+                max_reg = max(
+                    (r['register_time'] for r in user_records
+                     if r.get('register_time')),
+                    default=None,
+                )
+
+                stats = self._upsert_records(user_records)
+                for key in totals:
+                    totals[key] += stats[key]
+
+                log_lines.append(
+                    f"[İt-{iteration}] {stats['fetched']} kayıt → "
+                    f"{stats['created']} yeni, {stats['updated']} günc., "
+                    f"cursor→{max_reg.strftime('%Y-%m-%d %H:%M:%S') if max_reg else '?'}"
+                )
+
+                # Her 20 iterasyonda bir ara commit (güvenli checkpoint)
+                if iteration % 20 == 0:
+                    self.env.cr.commit()
+
+                # 100'den az geldiyse son sayfa, bittik
+                if len(user_records) < 100:
+                    finished = True
+                    break
+
+                # Cursor'ı ilerlet
+                if max_reg is None:
+                    finished = True
+                    log_lines.append(
+                        "[Uyarı] Kayıtlarda register_time yok, "
+                        "cursor ilerletilemiyor."
+                    )
+                    break
+                new_cursor = max_reg + timedelta(seconds=1)
+                if new_cursor <= last_cursor:
+                    log_lines.append(
+                        "[Uyarı] Cursor ilerlemiyor, döngü kırılıyor."
+                    )
+                    break
+                cursor = new_cursor
+                last_cursor = cursor
+
+            log_lines.append("")
             log_lines.append(
-                f"DOCUMENT_TYPE = {doc_type or 'ALL (hepsi)'}"
+                f"TOPLAM: {totals['fetched']} çekildi, {totals['created']} yeni, "
+                f"{totals['updated']} güncellenen, {iteration} iterasyon"
             )
+            if finished:
+                log_lines.append("✓ Sync tamamlandı (tüm veri çekildi)")
+            else:
+                log_lines.append(
+                    "⚠ Max iterasyon sınırına ulaşıldı. "
+                    "Tekrar çalıştırın — kaldığı yerden devam edecek."
+                )
 
-            # 3. SOAP çağrısı — tam sync için uzun timeout (300sn)
-            _logger.info("[GUVEN-MUKELLEF] SOAP GetUserList çağrılıyor (%s)",
-                         self.sync_mode)
-            with client.settings(raw_response=True):
-                if self.sync_mode == 'full':
-                    # Transport timeout'u uzat
-                    client.transport.load_timeout = 300
-                    client.transport.operation_timeout = 300
-                raw = client.service.GetUserList(**soap_args)
-
-            # 4. USER elementlerini doğrudan response'tan parse et
-            # (izibiz GetUserList yanıtı düz XML; Base64/ZIP yok)
-            log_lines.append(f"SOAP yanıtı {len(raw.content)} byte")
-            user_records = self._parse_users(raw.content)
-            log_lines.append(f"{len(user_records)} USER elementi parse edildi")
-
-            # 6. Upsert
-            stats = self._upsert_records(user_records)
-            log_lines.append(
-                f"Sonuç: {stats['created']} yeni, {stats['updated']} güncellenen, "
-                f"{stats['deleted_mark']} silinmiş işaretli"
-            )
-
-            # 7. Wizard state güncelle
+            # Wizard state güncelle
             self.write({
                 'state': 'done',
-                'total_fetched': stats['fetched'],
-                'total_created': stats['created'],
-                'total_updated': stats['updated'],
-                'total_deleted_mark': stats['deleted_mark'],
+                'total_fetched': totals['fetched'],
+                'total_created': totals['created'],
+                'total_updated': totals['updated'],
+                'total_deleted_mark': totals['deleted_mark'],
+                'total_iterations': iteration,
+                'finished': finished,
                 'log_messages': '\n'.join(log_lines),
             })
             _logger.info(
-                "[GUVEN-MUKELLEF] Sync tamamlandı: %s yeni, %s güncellenen",
-                stats['created'], stats['updated'],
+                "[GUVEN-MUKELLEF] Sync tamamlandı: %s iterasyon, "
+                "%s yeni, %s güncellenen, finished=%s",
+                iteration, totals['created'], totals['updated'], finished,
             )
         except Exception as e:
             _logger.exception("[GUVEN-MUKELLEF] Sync hatası")
@@ -300,6 +391,9 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
         fmt = self._fmt
         mode_label = dict(self._fields['sync_mode'].selection).get(self.sync_mode, '-')
         doc_label = dict(self._fields['document_type'].selection).get(self.document_type, '-')
+        status_text = ('✓ Tamamlandı (tüm veri çekildi)' if self.finished
+                       else '⚠ Max iterasyon sınırı — tekrar çalıştırın')
+        status_color = '#059669' if self.finished else '#d97706'
 
         return f"""\
 <div style="font-family:Inter,'Segoe UI',system-ui,sans-serif;color:#1e293b;line-height:1.5">
@@ -323,7 +417,13 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
 
 <div class="sr-header">
     <h2>GİB Mükellef Senkronizasyon Raporu</h2>
-    <div class="sr-sub">Mod: {mode_label} &middot; Doküman: {doc_label}</div>
+    <div class="sr-sub">Mod: {mode_label} &middot; Doküman: {doc_label} &middot;
+        İterasyon: {self.total_iterations}</div>
+    <div style="margin-top:8px;padding:6px 12px;background:rgba(255,255,255,0.15);
+         border-radius:8px;display:inline-block;color:{status_color};
+         background:#fff;font-weight:600;font-size:0.85em">
+         {status_text}
+    </div>
 </div>
 
 <div class="sr-cards">

@@ -11,6 +11,7 @@
                         <group>
                             <field name="sync_mode" widget="radio"/>
                             <field name="document_type"/>
+                            <field name="max_iterations"/>
                         </group>
                         <group>
                             <field name="last_sync_date" readonly="1"/>
