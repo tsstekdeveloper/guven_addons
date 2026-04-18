@@ -127,14 +127,14 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
             log_lines.append(f"DOCUMENT_TYPE = {self.document_type}")
 
             # 3. SOAP çağrısı — tam sync için uzun timeout (300sn)
-            _logger.info("[GUVEN-MUKELLEF] SOAP GetGibUserList çağrılıyor (%s)",
+            _logger.info("[GUVEN-MUKELLEF] SOAP GetUserList çağrılıyor (%s)",
                          self.sync_mode)
             with client.settings(raw_response=True):
                 if self.sync_mode == 'full':
                     # Transport timeout'u uzat
                     client.transport.load_timeout = 300
                     client.transport.operation_timeout = 300
-                raw = client.service.GetGibUserList(**soap_args)
+                raw = client.service.GetUserList(**soap_args)
 
             # 4. Base64 + ZIP çözme
             users_xml = self._decode_content(raw.content)
