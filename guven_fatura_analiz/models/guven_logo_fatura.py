@@ -2,7 +2,8 @@ import logging
 import time
 from datetime import date, timedelta
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -520,6 +521,119 @@ class GuvenLogoFatura(models.Model):
                     })
 
         return stats
+
+    def action_rematch_gib_selected(self):
+        """Seçili Logo faturaları için GİB eşleştirmesini yeniden çalıştır.
+
+        SOAP veya Logo MSSQL'e gitmeden, sadece mevcut DB üzerinde
+        (guven.fatura + guven.logo.fatura tabloları). İki yön simetrik
+        güncellenir:
+          * Ters (Logo → GİB): seçili Logo kayıtlarının gib_* alanları
+          * İleri (GİB → Logo): ilgili GİB kayıtlarının logo_* alanları
+
+        Havuz daraltma: Logo kayıtlarının fatura_no_1/fatura_no_2 değerleri
+        ile GİB'te arama (tarih penceresi taranmaz).
+        """
+        t0 = time.time()
+
+        if not self:
+            raise UserError(_("Lütfen en az bir Logo faturası seçin."))
+
+        # Logo kayıtlarının fatura numaralarını topla
+        no_set = set()
+        for lr in self:
+            if lr.fatura_no_1:
+                no_set.add(lr.fatura_no_1)
+            if lr.fatura_no_2:
+                no_set.add(lr.fatura_no_2)
+
+        company_ids = self.mapped('company_id').ids
+
+        if no_set:
+            gib_recs = self.env['guven.fatura'].search([
+                ('gvn_active', '=', True),
+                ('company_id', 'in', company_ids),
+                ('invoice_id', 'in', list(no_set)),
+            ])
+        else:
+            gib_recs = self.env['guven.fatura'].browse()
+
+        _logger.info(
+            "[GUVEN-MATCH] Manuel rematch (Logo seçimi): %s Logo, %s GİB havuzda",
+            len(self), len(gib_recs),
+        )
+
+        # Ters yön: Logo'nun gib_* alanları güncellenir
+        reverse_stats = self._match_gib_for_recordset(self, gib_recs)
+
+        # İleri yön: İlgili GİB kayıtlarının logo_* alanları güncellenir
+        # (simetri — bir bacağı eksik kalmasın)
+        # Logo havuzu: seçili Logo'lar + GİB kayıtlarının invoice_id'sine
+        # karşılık gelen diğer Logo kayıtları
+        forward_stats = {}
+        if gib_recs:
+            gib_invoice_ids = list({
+                gr.invoice_id for gr in gib_recs if gr.invoice_id
+            })
+            extra_logo = self.search([
+                ('company_id', 'in', company_ids),
+                '|',
+                ('fatura_no_1', 'in', gib_invoice_ids),
+                ('fatura_no_2', 'in', gib_invoice_ids),
+            ])
+            logo_pool = self | extra_logo
+            forward_stats = self.env['guven.fatura']._match_logo_for_recordset(
+                gib_recs, logo_pool,
+            )
+            _logger.info(
+                "[GUVEN-MATCH] İleri rematch (Logo seçiminden): "
+                "%s GİB, %s Logo havuzda",
+                len(gib_recs), len(logo_pool),
+            )
+
+        elapsed = time.time() - t0
+        _logger.info(
+            "[GUVEN-MATCH] Manuel rematch (Logo) bitti: %.2f sn "
+            "(ters: %s tek, %s çoklu, %s eşleşmeyen / "
+            "ileri: %s tek, %s çoklu)",
+            elapsed,
+            reverse_stats.get('matched_single', 0),
+            reverse_stats.get('matched_multi', 0),
+            reverse_stats.get('unmatched', 0),
+            forward_stats.get('matched_single', 0),
+            forward_stats.get('matched_multi', 0),
+        )
+
+        mesaj_satirlari = [
+            "━━━ Ters (Logo → GİB) ━━━",
+            f"Seçilen Logo: {reverse_stats['total']}",
+            f"Tek eşleşme: {reverse_stats['matched_single']}",
+            f"Çoklu eşleşme: {reverse_stats['matched_multi']}",
+            f"Eşleşmeyen: {reverse_stats['unmatched']}",
+            f"Tutar/Kimlik/Tarih/Yön farklı: "
+            f"{reverse_stats['tutar_farki']}/{reverse_stats['kimlik_farkli']}/"
+            f"{reverse_stats['fatura_tarihi_farkli']}/{reverse_stats['yon_farkli']}",
+            "",
+            "━━━ İleri (GİB → Logo) ━━━",
+            f"İşlenen GİB: {forward_stats.get('total', 0)}",
+            f"Tek eşleşme: {forward_stats.get('matched_single', 0)}",
+            f"Çoklu eşleşme: {forward_stats.get('matched_multi', 0)}",
+            f"Eşleşmeyen: {forward_stats.get('unmatched', 0)}",
+            "",
+            f"Süre: {elapsed:.2f} sn",
+        ]
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("GİB Eşleştirme Tamamlandı"),
+                'message': "\n".join(mesaj_satirlari),
+                'type': 'success',
+                'sticky': True,
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }
 
     # ── Advisory Lock helpers ────────────────────────────────────
 

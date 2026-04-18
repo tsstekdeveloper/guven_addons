@@ -2,6 +2,19 @@
 <odoo>
     <data>
 
+        <!-- ============================================================ -->
+        <!-- SERVER ACTION: GİB eşleştirmelerini kontrol et               -->
+        <!-- ============================================================ -->
+        <record id="action_server_rematch_gib_selected"
+                model="ir.actions.server">
+            <field name="name">GİB eşleştirmelerini kontrol et</field>
+            <field name="model_id" ref="model_guven_logo_fatura"/>
+            <field name="binding_model_id" ref="model_guven_logo_fatura"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">action = records.action_rematch_gib_selected()</field>
+        </record>
+
         <!-- Search View -->
         <record id="view_guven_logo_fatura_search" model="ir.ui.view">
             <field name="name">guven.logo.fatura.search</field>
