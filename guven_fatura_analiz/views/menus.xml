@@ -32,9 +32,9 @@
                   sequence="5"
                   groups="guven_fatura_analiz.group_muhasebe_calisani"/>
 
-        <!-- Submenu: GİB Mükellef Kayıtları (en üstte) -->
+        <!-- Submenu: Mükellef Kayıtları (en üstte) -->
         <menuitem id="menu_fatura_analiz_gib_mukellef"
-                  name="GİB Mükellef Kayıtları"
+                  name="Mükellef Kayıtları"
                   parent="menu_fatura_analiz_faturalar"
                   action="action_guven_gib_mukellef"
                   sequence="1"
@@ -110,11 +110,11 @@
                   sequence="7"
                   groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
 
-        <!-- Submenu: izibiz Mükellef Kaydı Güncelleme (en üstte) -->
+        <!-- Submenu: Mükellef Kaydı Güncelleme (placeholder — ileride eklenecek) -->
         <menuitem id="menu_fatura_analiz_gib_mukellef_sync"
-                  name="izibiz Mükellef Kaydı Güncelleme"
+                  name="Mükellef Kaydı Güncelleme"
                   parent="menu_fatura_analiz_veri_guncelleme"
-                  action="action_guven_gib_mukellef_sync_wizard"
+                  action="action_guven_mukellef_sync_placeholder"
                   sequence="1"
                   groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
 

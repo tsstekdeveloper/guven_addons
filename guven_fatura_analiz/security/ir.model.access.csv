@@ -52,8 +52,6 @@ access_guven_gib_mukellef_yoneticisi,guven.gib.mukellef.yoneticisi,model_guven_g
 access_guven_gib_mukellef_sorumlusu,guven.gib.mukellef.sorumlusu,model_guven_gib_mukellef,group_muhasebe_sorumlusu,1,0,0,0
 access_guven_gib_mukellef_uzmani,guven.gib.mukellef.uzmani,model_guven_gib_mukellef,group_muhasebe_uzmani,1,0,0,0
 access_guven_gib_mukellef_calisani,guven.gib.mukellef.calisani,model_guven_gib_mukellef,group_muhasebe_calisani,1,0,0,0
-access_guven_gib_mukellef_sync_wizard_yoneticisi,guven.gib.mukellef.sync.wizard.yoneticisi,model_guven_gib_mukellef_sync_wizard,group_muhasebe_yoneticisi,1,1,1,1
-access_guven_gib_mukellef_sync_wizard_sorumlusu,guven.gib.mukellef.sync.wizard.sorumlusu,model_guven_gib_mukellef_sync_wizard,group_muhasebe_sorumlusu,1,1,1,0
 access_guven_vergi_analiz_yoneticisi,guven.vergi.analiz.yoneticisi,model_guven_vergi_analiz,group_muhasebe_yoneticisi,1,1,1,1
 access_guven_vergi_analiz_sorumlusu,guven.vergi.analiz.sorumlusu,model_guven_vergi_analiz,group_muhasebe_sorumlusu,1,0,0,0
 access_guven_vergi_analiz_uzmani,guven.vergi.analiz.uzmani,model_guven_vergi_analiz,group_muhasebe_uzmani,1,0,0,0

@@ -9,39 +9,19 @@
             <field name="name">guven.gib.mukellef.search</field>
             <field name="model">guven.gib.mukellef</field>
             <field name="arch" type="xml">
-                <search string="GİB Mükellef Arama">
+                <search string="Mükellef Arama">
                     <field name="identifier" string="VKN/TCKN"/>
                     <field name="title" string="Ünvan"/>
-                    <field name="alias" string="Etiket"/>
                     <separator/>
-                    <filter name="filter_aktif" string="Aktif"
-                            domain="[('deleted', '=', False)]"/>
-                    <filter name="filter_silinmis" string="Silinmiş"
-                            domain="[('deleted', '=', True)]"/>
-                    <separator/>
-                    <filter name="filter_ozel" string="Özel"
-                            domain="[('user_type', '=', 'OZEL')]"/>
-                    <filter name="filter_kamu" string="Kamu"
-                            domain="[('user_type', '=', 'KAMU')]"/>
-                    <separator/>
-                    <filter name="filter_efatura" string="E-Fatura"
-                            domain="[('document_type', '=', 'INVOICE')]"/>
-                    <filter name="filter_eirsaliye" string="E-İrsaliye"
-                            domain="[('document_type', '=', 'DESPATCHADVICE')]"/>
-                    <separator/>
-                    <filter name="filter_gonderici" string="Gönderici (GB)"
-                            domain="[('unit', '=', 'GB')]"/>
-                    <filter name="filter_posta_kutusu" string="Posta Kutusu (PK)"
-                            domain="[('unit', '=', 'PK')]"/>
+                    <filter name="filter_izibiz" string="izibiz"
+                            domain="[('kaynak', '=', 'izibiz')]"/>
+                    <filter name="filter_gib" string="GİB"
+                            domain="[('kaynak', '=', 'gib')]"/>
+                    <filter name="filter_logo" string="LOGO"
+                            domain="[('kaynak', '=', 'logo')]"/>
                     <group>
-                        <filter name="group_document_type" string="Doküman Tipi"
-                                context="{'group_by': 'document_type'}"/>
-                        <filter name="group_user_type" string="Tip"
-                                context="{'group_by': 'user_type'}"/>
-                        <filter name="group_unit" string="Birim"
-                                context="{'group_by': 'unit'}"/>
-                        <filter name="group_register_time" string="Kayıt Tarihi (Ay)"
-                                context="{'group_by': 'register_time:month'}"/>
+                        <filter name="group_kaynak" string="Kaynak"
+                                context="{'group_by': 'kaynak'}"/>
                     </group>
                 </search>
             </field>
@@ -55,16 +35,10 @@
             <field name="model">guven.gib.mukellef</field>
             <field name="arch" type="xml">
                 <list create="0" edit="0" delete="0"
-                      decoration-muted="deleted"
-                      default_order="register_time desc">
+                      default_order="title">
                     <field name="identifier" string="VKN/TCKN"/>
                     <field name="title" string="Ünvan"/>
-                    <field name="alias" string="Etiket"/>
-                    <field name="document_type" string="Doküman"/>
-                    <field name="user_type" string="Tip"/>
-                    <field name="unit" string="Birim"/>
-                    <field name="register_time" string="Kayıt Tarihi"/>
-                    <field name="deleted" string="Silinmiş" widget="boolean"/>
+                    <field name="kaynak" string="Kaynak"/>
                 </list>
             </field>
         </record>
@@ -88,21 +62,9 @@
                             </h3>
                         </div>
                         <group>
-                            <group string="Kimlik ve Etiket">
-                                <field name="identifier" readonly="1"/>
-                                <field name="alias" readonly="1"/>
-                                <field name="document_type" readonly="1"/>
-                                <field name="user_type" readonly="1"/>
-                                <field name="unit" readonly="1"/>
-                            </group>
-                            <group string="Durum ve Tarihler">
-                                <field name="deleted" readonly="1"/>
-                                <field name="register_time" readonly="1"/>
-                                <field name="alias_creation_time" readonly="1"/>
-                                <field name="deletion_time" readonly="1"
-                                       invisible="not deleted"/>
-                                <field name="last_synced_at" readonly="1"/>
-                            </group>
+                            <field name="identifier" readonly="1"/>
+                            <field name="title" readonly="1"/>
+                            <field name="kaynak" readonly="1"/>
                         </group>
                     </sheet>
                 </form>
@@ -110,21 +72,41 @@
         </record>
 
         <!-- ============================================================ -->
-        <!-- ACTION                                                       -->
+        <!-- ACTION — Mükellef Kayıtları listesi                          -->
         <!-- ============================================================ -->
         <record id="action_guven_gib_mukellef" model="ir.actions.act_window">
-            <field name="name">GİB Mükellef Kayıtları</field>
+            <field name="name">Mükellef Kayıtları</field>
             <field name="res_model">guven.gib.mukellef</field>
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_guven_gib_mukellef_search"/>
-            <field name="context">{'search_default_filter_aktif': 1}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
-                    Henüz GİB mükellef kaydı yok.
+                    Henüz mükellef kaydı yok.
                 </p>
                 <p>
-                    izibiz SOAP servisinden senkronize edilen GİB e-fatura ve
-                    e-irsaliye mükellefleri burada listelenir.
+                    Mükellef kayıtları izibiz, GİB veya LOGO kaynaklarından
+                    beslenir.
+                </p>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- PLACEHOLDER ACTION — Mükellef Kaydı Güncelleme (yakında)     -->
+        <!-- ============================================================ -->
+        <record id="action_guven_mukellef_sync_placeholder"
+                model="ir.actions.act_window">
+            <field name="name">Mükellef Kaydı Güncelleme</field>
+            <field name="res_model">guven.gib.mukellef</field>
+            <field name="view_mode">list</field>
+            <field name="domain">[('id', '=', 0)]</field>
+            <field name="search_view_id" ref="view_guven_gib_mukellef_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Bu özellik yakında eklenecek
+                </p>
+                <p>
+                    Mükellef kayıtları artık kendi sistemimizden beslenecek.
+                    Güncelleme mekanizması sonraki sürümde tanımlanacak.
                 </p>
             </field>
         </record>

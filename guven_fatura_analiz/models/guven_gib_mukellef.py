@@ -2,79 +2,36 @@ from odoo import fields, models
 
 
 class GuvenGibMukellef(models.Model):
-    """GİB'e kayıtlı e-fatura/e-irsaliye mükellef kayıtları.
-
-    izibiz SOAP GetGibUserList metodundan çekilir, read-only.
-    """
+    """Mükellef kayıtları. Kaynak: izibiz / GİB / LOGO."""
 
     _name = 'guven.gib.mukellef'
-    _description = 'GİB Mükellef Kaydı'
-    _order = 'register_time desc, id desc'
+    _description = 'Mükellef Kaydı'
+    _order = 'title, id'
 
-    # === GetGibUserList USER alanları (birebir) ===
     identifier = fields.Char(
         string='VKN/TCKN',
         size=11,
         required=True,
         index=True,
-        help='Mükellef VKN veya TCKN',
-    )
-    alias = fields.Char(
-        string='Etiket',
-        required=True,
-        index=True,
-        help='Gönderici veya posta kutusu etiketi '
-             '(örn: urn:mail:defaultgb@firma.com)',
+        help='Vergi Kimlik Numarası veya TC Kimlik Numarası',
     )
     title = fields.Char(
         string='Ünvan',
-        help="GİB'de kayıtlı şirket/kişi adı",
+        help='Mükellef şirket/kişi adı',
     )
-    user_type = fields.Selection(
+    kaynak = fields.Selection(
         selection=[
-            ('OZEL', 'Özel'),
-            ('KAMU', 'Kamu'),
+            ('izibiz', 'izibiz'),
+            ('gib', 'GİB'),
+            ('logo', 'LOGO'),
         ],
-        string='Tip',
-    )
-    unit = fields.Selection(
-        selection=[
-            ('GB', 'Gönderici'),
-            ('PK', 'Posta Kutusu'),
-        ],
-        string='Birim',
-    )
-    document_type = fields.Selection(
-        selection=[
-            ('INVOICE', 'E-Fatura'),
-            ('DESPATCHADVICE', 'E-İrsaliye'),
-        ],
-        string='Doküman Tipi',
+        string='Kaynak',
+        required=True,
+        default='izibiz',
         index=True,
     )
-    register_time = fields.Datetime(
-        string='Kayıt Tarihi',
-        help='GİB ilk kayıt tarihi',
-    )
-    alias_creation_time = fields.Datetime(
-        string='Etiket Oluşturma Tarihi',
-    )
-    deleted = fields.Boolean(
-        string='Silinmiş',
-        default=False,
-        index=True,
-    )
-    deletion_time = fields.Datetime(
-        string='Silme Tarihi',
-    )
 
-    # === Sync metadata ===
-    last_synced_at = fields.Datetime(
-        string='Son Sync Tarihi',
-        readonly=True,
-    )
-
-    _unique_alias = models.Constraint(
-        'UNIQUE (identifier, alias, document_type)',
-        'Bu VKN + etiket + doküman tipi kombinasyonu zaten mevcut.',
+    _unique_identifier = models.Constraint(
+        'UNIQUE (identifier)',
+        'Bu VKN/TCKN ile kayıt zaten mevcut.',
     )
