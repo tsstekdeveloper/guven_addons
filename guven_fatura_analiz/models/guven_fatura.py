@@ -1802,18 +1802,6 @@ class GuvenFatura(models.Model):
             date_to: Bitiş tarihi (fields.Date)
             company_ids: list of int — eşleştirilecek şirket ID'leri
         """
-        LogoFatura = self.env['guven.logo.fatura']
-        stats = {
-            'total': 0,
-            'matched_single': 0,
-            'matched_multi': 0,
-            'unmatched': 0,
-            'tutar_farki': 0,
-            'kimlik_farkli': 0,
-            'fatura_tarihi_farkli': 0,
-            'yon_farkli': 0,
-        }
-
         # 1. İlgili guven.fatura kayıtlarını al
         faturas = self.search([
             ('issue_date', '>=', date_from),
@@ -1822,12 +1810,15 @@ class GuvenFatura(models.Model):
             ('company_id', 'in', company_ids),
         ])
         if not faturas:
-            return stats
-        stats['total'] = len(faturas)
+            return {
+                'total': 0, 'matched_single': 0, 'matched_multi': 0,
+                'unmatched': 0, 'tutar_farki': 0, 'kimlik_farkli': 0,
+                'fatura_tarihi_farkli': 0, 'yon_farkli': 0,
+            }
 
         # 2. Logo kayıtlarını ±30 gün tarih filtresiyle yükle
         buffer_days = timedelta(days=30)
-        logo_recs = LogoFatura.search([
+        logo_recs = self.env['guven.logo.fatura'].search([
             ('company_id', 'in', company_ids),
             '|',
             '&', ('fatura_tarihi_1', '>=', date_from - buffer_days),
@@ -1836,16 +1827,43 @@ class GuvenFatura(models.Model):
                  ('fatura_tarihi_2', '<=', date_to + buffer_days),
         ])
 
-        # 3. Lookup dict'leri oluştur: (company_id, fatura_no) → [records]
-        by_no1 = {}  # (company_id, fatura_no_1) → [logo_rec, ...]
-        by_no2 = {}  # (company_id, fatura_no_2) → [logo_rec, ...]
+        return self._match_logo_for_recordset(faturas, logo_recs)
+
+    def _match_logo_for_recordset(self, faturas, logo_recs):
+        """Verilen GİB fatura recordset'i için Logo eşleştirmesini çalıştır.
+
+        Args:
+            faturas: guven.fatura recordset
+            logo_recs: guven.logo.fatura recordset (arama havuzu)
+
+        Returns:
+            dict: stats (total, matched_single, matched_multi, unmatched,
+                  tutar_farki, kimlik_farkli, fatura_tarihi_farkli, yon_farkli)
+        """
+        LogoFatura = self.env['guven.logo.fatura']
+        stats = {
+            'total': len(faturas),
+            'matched_single': 0,
+            'matched_multi': 0,
+            'unmatched': 0,
+            'tutar_farki': 0,
+            'kimlik_farkli': 0,
+            'fatura_tarihi_farkli': 0,
+            'yon_farkli': 0,
+        }
+        if not faturas:
+            return stats
+
+        # Lookup dict'leri oluştur: (company_id, fatura_no) → [records]
+        by_no1 = {}
+        by_no2 = {}
         for lr in logo_recs:
             if lr.fatura_no_1:
                 by_no1.setdefault((lr.company_id.id, lr.fatura_no_1), []).append(lr)
             if lr.fatura_no_2:
                 by_no2.setdefault((lr.company_id.id, lr.fatura_no_2), []).append(lr)
 
-        # 4. Her guven.fatura için eşleşme ara
+        # Her guven.fatura için eşleşme ara
         for fatura in faturas:
             inv_id = fatura.invoice_id
             cid = fatura.company_id.id
@@ -1988,3 +2006,76 @@ class GuvenFatura(models.Model):
                         )
 
         return stats
+
+    def action_rematch_logo_selected(self):
+        """Seçili GİB faturaları için Logo eşleştirmesini yeniden çalıştır.
+
+        SOAP veya Logo MSSQL'e gitmeden, sadece mevcut DB üzerinde
+        (guven.fatura + guven.logo.fatura tabloları).
+        """
+        if not self:
+            raise UserError(_("Lütfen en az bir fatura seçin."))
+
+        # Seçilen faturaların arama havuzu için Logo kayıtlarını topla
+        # ±30 gün tarih filtresi — mevcut algoritmayla uyumlu
+        active_faturas = self.filtered(lambda f: f.gvn_active)
+        if not active_faturas:
+            raise UserError(_("Seçili kayıtlar aktif değil (gvn_active=False)."))
+
+        company_ids = active_faturas.mapped('company_id').ids
+        dates = active_faturas.mapped('issue_date')
+        if not dates:
+            raise UserError(_("Seçili faturaların issue_date alanı boş."))
+
+        date_from = min(dates)
+        date_to = max(dates)
+        buffer_days = timedelta(days=30)
+        logo_recs = self.env['guven.logo.fatura'].search([
+            ('company_id', 'in', company_ids),
+            '|',
+            '&', ('fatura_tarihi_1', '>=', date_from - buffer_days),
+                 ('fatura_tarihi_1', '<=', date_to + buffer_days),
+            '&', ('fatura_tarihi_2', '>=', date_from - buffer_days),
+                 ('fatura_tarihi_2', '<=', date_to + buffer_days),
+        ])
+
+        _logger.info(
+            "[GUVEN-MATCH] Manuel rematch: %s fatura, %s Logo kaydı havuzda",
+            len(active_faturas), len(logo_recs),
+        )
+        stats = self._match_logo_for_recordset(active_faturas, logo_recs)
+
+        # Ters eşleştirme de çalıştır (Logo → GİB), aynı Logo havuzu üzerinde
+        reverse_stats = {}
+        try:
+            # Sadece bu GİB kayıtlarıyla ilişkili olabilecek Logo kayıtları
+            reverse_stats = self.env['guven.logo.fatura']._match_gib_invoices(
+                date_from, date_to, company_ids,
+            ) or {}
+        except Exception:
+            _logger.exception("[GUVEN-MATCH] Ters eşleştirme hatası")
+
+        # Kullanıcıya notification ile sonuç göster
+        mesaj_satirlari = [
+            f"Seçilen fatura: {stats['total']}",
+            f"Tek eşleşme: {stats['matched_single']}",
+            f"Çoklu eşleşme: {stats['matched_multi']}",
+            f"Eşleşmeyen: {stats['unmatched']}",
+            "",
+            f"Tutar farkı: {stats['tutar_farki']}",
+            f"Kimlik farklı: {stats['kimlik_farkli']}",
+            f"Tarih farklı: {stats['fatura_tarihi_farkli']}",
+            f"Yön farklı: {stats['yon_farkli']}",
+        ]
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Logo Eşleştirme Tamamlandı"),
+                'message': "\n".join(mesaj_satirlari),
+                'type': 'success',
+                'sticky': True,
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }
