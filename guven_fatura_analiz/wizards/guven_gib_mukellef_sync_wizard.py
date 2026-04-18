@@ -42,6 +42,18 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
              '(örn. 200 x 100 = 20.000 kayıt). Çalışma timeout olursa tekrar '
              'tetikleyin; kaldığı yerden devam eder.',
     )
+    restart_from_beginning = fields.Boolean(
+        string='Baştan Başla',
+        default=False,
+        help='Tamamı modunda işaretlenirse, saklı cursor sıfırlanır ve '
+             'REGISTER_TIME_START = 2013-01-01 olarak başlar. Normalde bir '
+             'önceki session kaldığı yerden devam eder.',
+    )
+    current_full_cursor = fields.Datetime(
+        string='Mevcut Tam Sync Cursor',
+        compute='_compute_current_full_cursor',
+        help='Tam sync bir sonraki tetiklemede buradan başlayacak',
+    )
 
     state = fields.Selection(
         [('draft', 'Bekliyor'), ('done', 'Tamamlandı')],
@@ -67,6 +79,9 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
         sanitize=False,
     )
 
+    # Config parameter keys
+    _CURSOR_KEY = 'guven_fatura_analiz.gib_mukellef_full_cursor'
+
     # ── Computed ─────────────────────────────────────────────────
 
     @api.depends_context('uid')
@@ -79,6 +94,20 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
         last_date = row[0] if row and row[0] else False
         for rec in self:
             rec.last_sync_date = last_date
+
+    @api.depends_context('uid')
+    def _compute_current_full_cursor(self):
+        cursor_str = self.env['ir.config_parameter'].sudo().get_param(
+            self._CURSOR_KEY,
+        )
+        cursor_dt = False
+        if cursor_str:
+            try:
+                cursor_dt = fields.Datetime.from_string(cursor_str)
+            except Exception:
+                cursor_dt = False
+        for rec in self:
+            rec.current_full_cursor = cursor_dt
 
     @api.depends(
         'state', 'total_fetched', 'total_created', 'total_updated',
@@ -123,19 +152,28 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
             doc_type = self.document_type if self.document_type != 'ALL' else None
 
             # Başlangıç cursor'ı belirle
+            ICPSudo = self.env['ir.config_parameter'].sudo()
             if self.sync_mode == 'full':
-                # "Tamamı" modu — DB'deki en yeni REGISTER_TIME'dan devam et,
-                # yoksa 2013-01-01'den başla. Bu sayede aynı modül birden
-                # fazla çağrıda tamamlanabilir.
-                self.env.cr.execute(
-                    "SELECT MAX(register_time) FROM guven_gib_mukellef"
-                )
-                row = self.env.cr.fetchone()
-                cursor = row[0] if row and row[0] else datetime(2013, 1, 1)
-                log_lines.append(
-                    f"Tam sync: cursor başlangıcı "
-                    f"{cursor.strftime('%Y-%m-%d %H:%M:%S')}"
-                )
+                # "Tamamı" modu — saklı cursor'dan devam et, yoksa 2013'ten başla
+                if self.restart_from_beginning:
+                    ICPSudo.set_param(self._CURSOR_KEY, False)
+                    cursor = datetime(2013, 1, 1)
+                    log_lines.append(
+                        "Tam sync: BAŞTAN başlanıyor (cursor sıfırlandı)"
+                    )
+                else:
+                    cursor_str = ICPSudo.get_param(self._CURSOR_KEY)
+                    if cursor_str:
+                        try:
+                            cursor = fields.Datetime.from_string(cursor_str)
+                        except Exception:
+                            cursor = datetime(2013, 1, 1)
+                    else:
+                        cursor = datetime(2013, 1, 1)
+                    log_lines.append(
+                        f"Tam sync: cursor başlangıcı "
+                        f"{cursor.strftime('%Y-%m-%d %H:%M:%S')}"
+                    )
             else:
                 # Delta: last_synced_at'ten başla (fallback: son 7 gün)
                 cursor = self.last_sync_date or (
@@ -224,6 +262,25 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
                     break
                 cursor = new_cursor
                 last_cursor = cursor
+
+                # Full modda cursor'ı kalıcı olarak sakla (checkpoint)
+                if self.sync_mode == 'full':
+                    ICPSudo.set_param(
+                        self._CURSOR_KEY,
+                        fields.Datetime.to_string(cursor),
+                    )
+
+            # Full modda bitim durumunu yansıt
+            if self.sync_mode == 'full':
+                if finished:
+                    # Tüm liste çekildi → cursor'ı sıfırla
+                    ICPSudo.set_param(self._CURSOR_KEY, False)
+                else:
+                    # Max iterasyon → son cursor'ı sakla
+                    ICPSudo.set_param(
+                        self._CURSOR_KEY,
+                        fields.Datetime.to_string(cursor),
+                    )
 
             log_lines.append("")
             log_lines.append(
