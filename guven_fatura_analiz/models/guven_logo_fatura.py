@@ -49,7 +49,7 @@ WHERE CAST(inv.DATE_ AS DATE) BETWEEN %s AND %s
 """
 
 
-def _row_to_vals(row, company_id):
+def _row_to_vals(row, company_id, logo_firma_kodu):
     """Convert a MSSQL row dict to guven.logo.fatura field values."""
     def _to_date(val):
         if val is None:
@@ -64,6 +64,7 @@ def _row_to_vals(row, company_id):
 
     return {
         'company_id': company_id,
+        'logo_firma_kodu': logo_firma_kodu or False,
         'logo_id': row['LOGICALREF'],
         'fatura_no_1': row['FICHENO'] or False,
         'fatura_no_2': row['DOCODE'] or False,
@@ -98,6 +99,14 @@ class GuvenLogoFatura(models.Model):
     company_id = fields.Many2one(
         'res.company', string='Şirket', required=True, index=True,
         default=lambda self: self.env.company,
+    )
+    logo_firma_kodu = fields.Char(
+        string='Logo Firma Kodu',
+        size=3,
+        index=True,
+        help='Logo ERP firma kodu (örn: 550, 600). Farklı Logo firma '
+             'tabloları aynı LOGICALREF değerini kullanabildiği için '
+             'logo_id tek başına unique değil; unique key bu alanla üçlü.',
     )
     logo_id = fields.Integer(string='Logo ID', required=True, index=True)
     fatura_no_1 = fields.Char(string='Fatura No 1', index=True)
@@ -165,8 +174,8 @@ class GuvenLogoFatura(models.Model):
     gib_notes = fields.Text(string='GİB Eşleşme Notları', copy=False)
 
     _unique_logo = models.Constraint(
-        'UNIQUE (logo_id, company_id)',
-        'Bu Logo ID ile kayıt zaten mevcut!',
+        'UNIQUE (logo_id, company_id, logo_firma_kodu)',
+        'Bu Logo ID + firma kodu kombinasyonu zaten mevcut!',
     )
 
     # ── Computed: GİB Karşılaştırma HTML ─────────────────────────
@@ -657,12 +666,15 @@ class GuvenLogoFatura(models.Model):
 
         creds = company.get_logo_credentials()
 
-        # Resolve table names from period, fallback to static fields
+        # Resolve firm code + table names from period, fallback to static fields
         Donem = self.env['guven.logo.donem']
+        logo_firma_kodu = Donem.logo_firma_kodu_ver(company, date_from)
         inv_table, cl_table = Donem.logo_tablo_adlari_ver(company, date_from)
         if not inv_table:
             inv_table = creds['invoice_table']
             cl_table = creds['clcard_table']
+        if not logo_firma_kodu:
+            logo_firma_kodu = company.logo_firma_kodu
 
         conn = pymssql.connect(
             server=creds['server'],
@@ -688,18 +700,22 @@ class GuvenLogoFatura(models.Model):
         fetched = len(rows)
 
         # ── Upsert: Logo'dan dönen kayıtları oluştur/güncelle ───
+        # Lookup (logo_id, logo_firma_kodu) üzerinden — farklı firma
+        # tabloları aynı LOGICALREF kullanabildiği için firma kodu ile
+        # ayrışmalı.
         to_create = []
         to_update = []
         if rows:
             logo_ids = [r['LOGICALREF'] for r in rows]
             existing = self.with_company(company).search([
                 ('company_id', '=', company.id),
+                ('logo_firma_kodu', '=', logo_firma_kodu),
                 ('logo_id', 'in', logo_ids),
             ])
             existing_map = {rec.logo_id: rec for rec in existing}
 
             for row in rows:
-                vals = _row_to_vals(row, company.id)
+                vals = _row_to_vals(row, company.id, logo_firma_kodu)
                 rec = existing_map.get(row['LOGICALREF'])
                 if rec:
                     changed = {
@@ -713,37 +729,15 @@ class GuvenLogoFatura(models.Model):
 
             if to_create:
                 self.with_company(company).create(to_create)
-
-            # DEBUG: Hangi alanların değiştiğini say (geçici teşhis)
-            field_change_count = {}
-            sample_diffs = []
             for rec, changed in to_update:
-                for k in changed:
-                    field_change_count[k] = field_change_count.get(k, 0) + 1
-                # İlk 5 kayıt için "öncesi → sonrası" örneği
-                if len(sample_diffs) < 5:
-                    diff = {
-                        k: (rec[k], changed[k])
-                        for k in changed
-                    }
-                    sample_diffs.append((rec.logo_id, diff))
                 rec.write(changed)
 
-            if to_update:
-                _logger.info(
-                    "[GUVEN-LOGO-DEBUG] %s: %s kayıt güncellendi. "
-                    "Alan bazında: %s",
-                    company.name, len(to_update), field_change_count,
-                )
-                for logo_id, diff in sample_diffs:
-                    _logger.info(
-                        "[GUVEN-LOGO-DEBUG]   Örnek logo_id=%s: %s",
-                        logo_id, diff,
-                    )
-
         # ── Orphan tespiti: Logo'da silinen kayıtları Odoo'dan temizle ──
+        # Sadece BU dönemin (logo_firma_kodu) kayıtları — diğer dönemler
+        # bu SOAP sorgusunda zaten gelmedi, orphan değiller.
         all_odoo_in_range = self.with_company(company).search([
             ('company_id', '=', company.id),
+            ('logo_firma_kodu', '=', logo_firma_kodu),
             '|',
             '&', ('fatura_tarihi_2', '>=', date_from), ('fatura_tarihi_2', '<=', date_to),
             '&', ('fatura_tarihi_1', '>=', date_from), ('fatura_tarihi_1', '<=', date_to),
