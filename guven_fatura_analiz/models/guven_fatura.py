@@ -2049,26 +2049,62 @@ class GuvenFatura(models.Model):
             "[GUVEN-MATCH] Manuel rematch: %s fatura, %s Logo kaydı havuzda",
             len(active_faturas), len(logo_recs),
         )
+        # İleri yön: GİB → Logo
         stats = self._match_logo_for_recordset(active_faturas, logo_recs)
+
+        # Ters yön: aynı Logo kayıtlarının gib_* alanlarını da simetrik güncelle
+        # (bir bacağı eksik kalmasın). GİB havuzu: seçili faturalar +
+        # Logo kayıtlarının diğer fatura_no referanslarına gelen mevcut GİB
+        # kayıtları (yine hedefli daraltma).
+        reverse_stats = {}
+        if logo_recs:
+            extra_nos = set()
+            for lr in logo_recs:
+                if lr.fatura_no_1:
+                    extra_nos.add(lr.fatura_no_1)
+                if lr.fatura_no_2:
+                    extra_nos.add(lr.fatura_no_2)
+            # Zaten seçili faturaları dahil et
+            extra_nos.update(invoice_ids)
+
+            reverse_gib_recs = self.search([
+                ('gvn_active', '=', True),
+                ('company_id', 'in', company_ids),
+                ('invoice_id', 'in', list(extra_nos)),
+            ])
+            reverse_stats = self.env['guven.logo.fatura']._match_gib_for_recordset(
+                logo_recs, reverse_gib_recs,
+            )
+            _logger.info(
+                "[GUVEN-MATCH] Ters rematch: %s Logo kaydı, %s GİB havuzda",
+                len(logo_recs), len(reverse_gib_recs),
+            )
 
         elapsed = time.time() - t0
         _logger.info(
             "[GUVEN-MATCH] Manuel rematch bitti: %.2f sn "
-            "(%s tek, %s çoklu, %s eşleşmeyen)",
+            "(ileri: %s tek, %s çoklu, %s eşleşmeyen / ters: %s tek, %s çoklu)",
             elapsed, stats['matched_single'], stats['matched_multi'],
             stats['unmatched'],
+            reverse_stats.get('matched_single', 0),
+            reverse_stats.get('matched_multi', 0),
         )
 
         mesaj_satirlari = [
+            "━━━ İleri (GİB → Logo) ━━━",
             f"Seçilen fatura: {stats['total']}",
             f"Tek eşleşme: {stats['matched_single']}",
             f"Çoklu eşleşme: {stats['matched_multi']}",
             f"Eşleşmeyen: {stats['unmatched']}",
+            f"Tutar/Kimlik/Tarih/Yön farklı: "
+            f"{stats['tutar_farki']}/{stats['kimlik_farkli']}/"
+            f"{stats['fatura_tarihi_farkli']}/{stats['yon_farkli']}",
             "",
-            f"Tutar farkı: {stats['tutar_farki']}",
-            f"Kimlik farklı: {stats['kimlik_farkli']}",
-            f"Tarih farklı: {stats['fatura_tarihi_farkli']}",
-            f"Yön farklı: {stats['yon_farkli']}",
+            "━━━ Ters (Logo → GİB) ━━━",
+            f"İşlenen Logo: {reverse_stats.get('total', 0)}",
+            f"Tek eşleşme: {reverse_stats.get('matched_single', 0)}",
+            f"Çoklu eşleşme: {reverse_stats.get('matched_multi', 0)}",
+            f"Eşleşmeyen: {reverse_stats.get('unmatched', 0)}",
             "",
             f"Süre: {elapsed:.2f} sn",
         ]

@@ -316,18 +316,6 @@ class GuvenLogoFatura(models.Model):
         Returns:
             dict: Stats with total, matched_single, matched_multi, unmatched, etc.
         """
-        GibFatura = self.env['guven.fatura']
-        stats = {
-            'total': 0,
-            'matched_single': 0,
-            'matched_multi': 0,
-            'unmatched': 0,
-            'tutar_farki': 0,
-            'kimlik_farkli': 0,
-            'fatura_tarihi_farkli': 0,
-            'yon_farkli': 0,
-        }
-
         # 1. Logo kayıtlarını tarih aralığına göre al
         logo_recs = self.search([
             ('company_id', 'in', company_ids),
@@ -336,8 +324,11 @@ class GuvenLogoFatura(models.Model):
             '&', ('fatura_tarihi_2', '>=', date_from), ('fatura_tarihi_2', '<=', date_to),
         ])
         if not logo_recs:
-            return stats
-        stats['total'] = len(logo_recs)
+            return {
+                'total': 0, 'matched_single': 0, 'matched_multi': 0,
+                'unmatched': 0, 'tutar_farki': 0, 'kimlik_farkli': 0,
+                'fatura_tarihi_farkli': 0, 'yon_farkli': 0,
+            }
 
         # 2. GİB faturalarını ±30 gün tarih filtresiyle yükle
         buffer_days = timedelta(days=30)
@@ -351,16 +342,41 @@ class GuvenLogoFatura(models.Model):
         if all_dates:
             gib_date_from = min(all_dates) - buffer_days
             gib_date_to = max(all_dates) + buffer_days
-            gib_recs = GibFatura.search([
+            gib_recs = self.env['guven.fatura'].search([
                 ('gvn_active', '=', True),
                 ('company_id', 'in', company_ids),
                 ('issue_date', '>=', gib_date_from),
                 ('issue_date', '<=', gib_date_to),
             ])
         else:
-            gib_recs = GibFatura.browse()
+            gib_recs = self.env['guven.fatura'].browse()
 
-        # 3. Lookup dict: (company_id, invoice_id) → [guven.fatura, ...]
+        return self._match_gib_for_recordset(logo_recs, gib_recs)
+
+    def _match_gib_for_recordset(self, logo_recs, gib_recs):
+        """Verilen Logo recordset'i için GİB eşleştirmesini çalıştır.
+
+        Args:
+            logo_recs: guven.logo.fatura recordset
+            gib_recs: guven.fatura recordset (arama havuzu)
+
+        Returns:
+            dict: stats
+        """
+        stats = {
+            'total': len(logo_recs),
+            'matched_single': 0,
+            'matched_multi': 0,
+            'unmatched': 0,
+            'tutar_farki': 0,
+            'kimlik_farkli': 0,
+            'fatura_tarihi_farkli': 0,
+            'yon_farkli': 0,
+        }
+        if not logo_recs:
+            return stats
+
+        # Lookup dict: (company_id, invoice_id) → [guven.fatura, ...]
         gib_by_invoice_id = {}
         for gr in gib_recs:
             if gr.invoice_id:
@@ -368,7 +384,7 @@ class GuvenLogoFatura(models.Model):
                     (gr.company_id.id, gr.invoice_id), []
                 ).append(gr)
 
-        # 4. Her Logo kaydı için eşleşme ara
+        # Her Logo kaydı için eşleşme ara
         for logo_rec in logo_recs:
             cid = logo_rec.company_id.id
 
