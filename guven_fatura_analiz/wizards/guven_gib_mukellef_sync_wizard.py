@@ -1,7 +1,4 @@
-import base64
-import io
 import logging
-import zipfile
 from datetime import datetime, timedelta
 from xml.etree import ElementTree as ET
 
@@ -140,12 +137,10 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
                     client.transport.operation_timeout = 300
                 raw = client.service.GetUserList(**soap_args)
 
-            # 4. Base64 + ZIP çözme
-            users_xml = self._decode_content(raw.content)
-            log_lines.append(f"XML içeriği {len(users_xml)} byte çıkarıldı")
-
-            # 5. USER elementlerini parse et
-            user_records = self._parse_users(users_xml)
+            # 4. USER elementlerini doğrudan response'tan parse et
+            # (izibiz GetUserList yanıtı düz XML; Base64/ZIP yok)
+            log_lines.append(f"SOAP yanıtı {len(raw.content)} byte")
+            user_records = self._parse_users(raw.content)
             log_lines.append(f"{len(user_records)} USER elementi parse edildi")
 
             # 6. Upsert
@@ -190,36 +185,6 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     # ── Helpers ──────────────────────────────────────────────────
-
-    def _decode_content(self, raw_content):
-        """SOAP response'tan CONTENT'ı çıkar, Base64 decode et, gerekirse ZIP aç."""
-        root = ET.fromstring(raw_content)
-        content_text = None
-        max_len = 0
-        for elem in root.iter():
-            tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-            if tag == 'CONTENT' and elem.text and len(elem.text.strip()) > max_len:
-                content_text = elem.text.strip()
-                max_len = len(content_text)
-
-        if not content_text:
-            raise UserError(_("SOAP yanıtında CONTENT bulunamadı."))
-
-        decoded = base64.b64decode(content_text)
-        if decoded[:4] == b'PK\x03\x04':
-            with zipfile.ZipFile(io.BytesIO(decoded), 'r') as zf:
-                xml_name = next(
-                    (n for n in zf.namelist()
-                     if n.endswith('.xml') and not n.startswith('__')),
-                    zf.namelist()[0] if zf.namelist() else None,
-                )
-                if not xml_name:
-                    raise UserError(_("ZIP içinde XML bulunamadı."))
-                xml_bytes = zf.read(xml_name)
-        else:
-            xml_bytes = decoded
-
-        return xml_bytes.replace(b'\x00', b'')
 
     def _parse_users(self, xml_bytes):
         """USER elementlerini dict listesi olarak döndür."""
