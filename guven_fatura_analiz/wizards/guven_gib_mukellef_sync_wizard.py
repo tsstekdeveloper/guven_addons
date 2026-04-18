@@ -107,24 +107,28 @@ class GuvenGibMukellefSyncWizard(models.TransientModel):
 
         try:
             # 2. Request parametreleri
+            # izibiz WSDL imzası: REQUEST_HEADER, REGISTER_TIME_START, DOCUMENT_TYPE
+            # DOCUMENT_TYPE: INVOICE, DESPATCHADVICE (boş = hepsi)
+            doc_type = self.document_type if self.document_type != 'ALL' else None
             soap_args = {
                 'REQUEST_HEADER': request_header,
-                'DOCUMENT_TYPE': self.document_type,
-                'ALIAS_TYPE': 'ALL',
-                'TYPE': 'XML',
             }
+            if doc_type:
+                soap_args['DOCUMENT_TYPE'] = doc_type
             if self.sync_mode == 'delta':
-                modify_date = self.last_sync_date or (
+                start_date = self.last_sync_date or (
                     fields.Datetime.now() - timedelta(days=7)
                 )
-                soap_args['ALIAS_MODIFY_DATE'] = modify_date
+                soap_args['REGISTER_TIME_START'] = start_date
                 log_lines.append(
-                    f"Delta sync: ALIAS_MODIFY_DATE = "
-                    f"{modify_date.strftime('%Y-%m-%d %H:%M:%S')}"
+                    f"Delta sync: REGISTER_TIME_START = "
+                    f"{start_date.strftime('%Y-%m-%d %H:%M:%S')}"
                 )
             else:
-                log_lines.append("Tam sync: tüm liste çekiliyor")
-            log_lines.append(f"DOCUMENT_TYPE = {self.document_type}")
+                log_lines.append("Tam sync: tüm liste çekiliyor (uzun sürebilir)")
+            log_lines.append(
+                f"DOCUMENT_TYPE = {doc_type or 'ALL (hepsi)'}"
+            )
 
             # 3. SOAP çağrısı — tam sync için uzun timeout (300sn)
             _logger.info("[GUVEN-MUKELLEF] SOAP GetUserList çağrılıyor (%s)",
