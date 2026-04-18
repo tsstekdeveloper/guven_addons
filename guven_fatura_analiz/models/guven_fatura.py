@@ -2012,32 +2012,38 @@ class GuvenFatura(models.Model):
 
         SOAP veya Logo MSSQL'e gitmeden, sadece mevcut DB üzerinde
         (guven.fatura + guven.logo.fatura tabloları).
+
+        Performans: Logo havuzu sadece seçili faturaların `invoice_id`
+        değerleriyle eşleşen Logo kayıtlarıyla sınırlandırılır — tarih
+        penceresi taraması yapılmaz.
         """
+        import time
+        t0 = time.time()
+
         if not self:
             raise UserError(_("Lütfen en az bir fatura seçin."))
 
-        # Seçilen faturaların arama havuzu için Logo kayıtlarını topla
-        # ±30 gün tarih filtresi — mevcut algoritmayla uyumlu
         active_faturas = self.filtered(lambda f: f.gvn_active)
         if not active_faturas:
             raise UserError(_("Seçili kayıtlar aktif değil (gvn_active=False)."))
 
+        # Logo havuzunu fatura numarasına göre hedefli daralt:
+        # sadece seçili GİB faturalarının invoice_id'sine karşılık gelen
+        # Logo kayıtları (fatura_no_1 VEYA fatura_no_2).
+        invoice_ids = list({
+            f.invoice_id for f in active_faturas if f.invoice_id
+        })
         company_ids = active_faturas.mapped('company_id').ids
-        dates = active_faturas.mapped('issue_date')
-        if not dates:
-            raise UserError(_("Seçili faturaların issue_date alanı boş."))
 
-        date_from = min(dates)
-        date_to = max(dates)
-        buffer_days = timedelta(days=30)
-        logo_recs = self.env['guven.logo.fatura'].search([
-            ('company_id', 'in', company_ids),
-            '|',
-            '&', ('fatura_tarihi_1', '>=', date_from - buffer_days),
-                 ('fatura_tarihi_1', '<=', date_to + buffer_days),
-            '&', ('fatura_tarihi_2', '>=', date_from - buffer_days),
-                 ('fatura_tarihi_2', '<=', date_to + buffer_days),
-        ])
+        if invoice_ids:
+            logo_recs = self.env['guven.logo.fatura'].search([
+                ('company_id', 'in', company_ids),
+                '|',
+                ('fatura_no_1', 'in', invoice_ids),
+                ('fatura_no_2', 'in', invoice_ids),
+            ])
+        else:
+            logo_recs = self.env['guven.logo.fatura'].browse()
 
         _logger.info(
             "[GUVEN-MATCH] Manuel rematch: %s fatura, %s Logo kaydı havuzda",
@@ -2045,17 +2051,14 @@ class GuvenFatura(models.Model):
         )
         stats = self._match_logo_for_recordset(active_faturas, logo_recs)
 
-        # Ters eşleştirme de çalıştır (Logo → GİB), aynı Logo havuzu üzerinde
-        reverse_stats = {}
-        try:
-            # Sadece bu GİB kayıtlarıyla ilişkili olabilecek Logo kayıtları
-            reverse_stats = self.env['guven.logo.fatura']._match_gib_invoices(
-                date_from, date_to, company_ids,
-            ) or {}
-        except Exception:
-            _logger.exception("[GUVEN-MATCH] Ters eşleştirme hatası")
+        elapsed = time.time() - t0
+        _logger.info(
+            "[GUVEN-MATCH] Manuel rematch bitti: %.2f sn "
+            "(%s tek, %s çoklu, %s eşleşmeyen)",
+            elapsed, stats['matched_single'], stats['matched_multi'],
+            stats['unmatched'],
+        )
 
-        # Kullanıcıya notification ile sonuç göster
         mesaj_satirlari = [
             f"Seçilen fatura: {stats['total']}",
             f"Tek eşleşme: {stats['matched_single']}",
@@ -2066,6 +2069,8 @@ class GuvenFatura(models.Model):
             f"Kimlik farklı: {stats['kimlik_farkli']}",
             f"Tarih farklı: {stats['fatura_tarihi_farkli']}",
             f"Yön farklı: {stats['yon_farkli']}",
+            "",
+            f"Süre: {elapsed:.2f} sn",
         ]
 
         return {
