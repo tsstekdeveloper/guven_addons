@@ -11,14 +11,12 @@
                         <group>
                             <field name="sync_mode" widget="radio"/>
                             <field name="document_type"/>
-                            <field name="max_iterations"/>
+                            <field name="max_iterations_per_company"/>
                             <field name="restart_from_beginning"
                                    invisible="sync_mode != 'full'"/>
                         </group>
                         <group>
                             <field name="last_sync_date" readonly="1"/>
-                            <field name="current_full_cursor" readonly="1"
-                                   invisible="sync_mode != 'full'"/>
                         </group>
                     </group>
                     <div invisible="state != 'done'">
