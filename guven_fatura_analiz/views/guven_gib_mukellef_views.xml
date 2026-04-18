@@ -66,6 +66,116 @@
                             <field name="title" readonly="1"/>
                             <field name="kaynak" readonly="1"/>
                         </group>
+
+                        <notebook>
+                            <page string="GİB Faturaları (Gelen)"
+                                  name="gib_gelen">
+                                <field name="gib_gelen_count" invisible="1"/>
+                                <div class="alert alert-info" role="alert"
+                                     invisible="gib_gelen_count == 0">
+                                    Toplam <field name="gib_gelen_count"
+                                                  readonly="1" nolabel="1"/>
+                                    adet gelen GİB faturası.
+                                </div>
+                                <field name="gib_fatura_gelen_ids"
+                                       readonly="1" nolabel="1">
+                                    <list create="0" edit="0" delete="0"
+                                          default_order="issue_date desc">
+                                        <field name="invoice_id"/>
+                                        <field name="issue_date"/>
+                                        <field name="kaynak"/>
+                                        <field name="sender_name"
+                                               string="Gönderen"/>
+                                        <field name="payable_amount_try"
+                                               string="Tutar (TRY)"
+                                               widget="float"
+                                               options="{'digits': [16, 2]}"/>
+                                        <field name="company_id"
+                                               groups="base.group_multi_company"/>
+                                    </list>
+                                </field>
+                            </page>
+
+                            <page string="GİB Faturaları (Giden)"
+                                  name="gib_giden">
+                                <field name="gib_giden_count" invisible="1"/>
+                                <div class="alert alert-info" role="alert"
+                                     invisible="gib_giden_count == 0">
+                                    Toplam <field name="gib_giden_count"
+                                                  readonly="1" nolabel="1"/>
+                                    adet giden GİB faturası.
+                                </div>
+                                <field name="gib_fatura_giden_ids"
+                                       readonly="1" nolabel="1">
+                                    <list create="0" edit="0" delete="0"
+                                          default_order="issue_date desc">
+                                        <field name="invoice_id"/>
+                                        <field name="issue_date"/>
+                                        <field name="kaynak"/>
+                                        <field name="receiver_name"
+                                               string="Alıcı"/>
+                                        <field name="payable_amount_try"
+                                               string="Tutar (TRY)"
+                                               widget="float"
+                                               options="{'digits': [16, 2]}"/>
+                                        <field name="company_id"
+                                               groups="base.group_multi_company"/>
+                                    </list>
+                                </field>
+                            </page>
+
+                            <page string="LOGO Faturaları (Gelen)"
+                                  name="logo_gelen">
+                                <field name="logo_gelen_count" invisible="1"/>
+                                <div class="alert alert-info" role="alert"
+                                     invisible="logo_gelen_count == 0">
+                                    Toplam <field name="logo_gelen_count"
+                                                  readonly="1" nolabel="1"/>
+                                    adet gelen LOGO faturası.
+                                </div>
+                                <field name="logo_fatura_gelen_ids"
+                                       readonly="1" nolabel="1">
+                                    <list create="0" edit="0" delete="0"
+                                          default_order="fatura_tarihi_1 desc">
+                                        <field name="fatura_no_1"/>
+                                        <field name="fatura_tarihi_1"/>
+                                        <field name="fatura_tipi"/>
+                                        <field name="fatura_tutari"
+                                               widget="float"
+                                               options="{'digits': [16, 2]}"/>
+                                        <field name="iptal_durumu"/>
+                                        <field name="company_id"
+                                               groups="base.group_multi_company"/>
+                                    </list>
+                                </field>
+                            </page>
+
+                            <page string="LOGO Faturaları (Giden)"
+                                  name="logo_giden">
+                                <field name="logo_giden_count" invisible="1"/>
+                                <div class="alert alert-info" role="alert"
+                                     invisible="logo_giden_count == 0">
+                                    Toplam <field name="logo_giden_count"
+                                                  readonly="1" nolabel="1"/>
+                                    adet giden LOGO faturası.
+                                </div>
+                                <field name="logo_fatura_giden_ids"
+                                       readonly="1" nolabel="1">
+                                    <list create="0" edit="0" delete="0"
+                                          default_order="fatura_tarihi_1 desc">
+                                        <field name="fatura_no_1"/>
+                                        <field name="fatura_tarihi_1"/>
+                                        <field name="fatura_tipi"/>
+                                        <field name="fatura_tutari"
+                                               widget="float"
+                                               options="{'digits': [16, 2]}"/>
+                                        <field name="iptal_durumu"/>
+                                        <field name="company_id"
+                                               groups="base.group_multi_company"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
