@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 
 # Logo TRCODE → GİB yönü mapping'i
@@ -58,6 +58,20 @@ class GuvenGibMukellef(models.Model):
                 rec.tip = 'sahis'
             else:
                 rec.tip = False
+
+    @api.depends('title', 'identifier')
+    def _compute_display_name(self):
+        for rec in self:
+            title = (rec.title or '').strip()
+            ident = (rec.identifier or '').strip()
+            if title and ident:
+                rec.display_name = f'{title} ({ident})'
+            elif title:
+                rec.display_name = title
+            elif ident:
+                rec.display_name = ident
+            else:
+                rec.display_name = _('Mükellef #%s') % rec.id
 
     # ── Computed fatura ilişkileri (read-only, sayım + liste gösterimi) ──
     gib_fatura_gelen_ids = fields.Many2many(
