@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="seq_guven_gib_mukellef_logo" model="ir.sequence">
+            <field name="name">LOGO Mükellef Sequence</field>
+            <field name="code">guven.gib.mukellef.logo</field>
+            <field name="prefix">LOGO-MUK-</field>
+            <field name="padding">7</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+            <field name="implementation">no_gap</field>
+        </record>
+
+    </data>
+</odoo>

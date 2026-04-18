@@ -110,11 +110,11 @@
                   sequence="7"
                   groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
 
-        <!-- Submenu: Mükellef Kaydı Güncelleme (placeholder — ileride eklenecek) -->
+        <!-- Submenu: Mükellef Kaydı Güncelleme -->
         <menuitem id="menu_fatura_analiz_gib_mukellef_sync"
                   name="Mükellef Kaydı Güncelleme"
                   parent="menu_fatura_analiz_veri_guncelleme"
-                  action="action_guven_mukellef_sync_placeholder"
+                  action="action_guven_mukellef_update_wizard"
                   sequence="1"
                   groups="guven_fatura_analiz.group_muhasebe_sorumlusu"/>
 
