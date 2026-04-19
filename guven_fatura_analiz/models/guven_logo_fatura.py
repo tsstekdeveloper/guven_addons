@@ -787,6 +787,13 @@ class GuvenLogoFatura(models.Model):
                 if not company.has_logo_credentials():
                     continue
 
+                # Exception handler'larda DB fetch tetiklememek için
+                # şirket alanlarını upfront cache'le. Aborted transaction
+                # durumunda company.name fetch'i "current transaction is
+                # aborted" hatası fırlatır ve iç hatayı örter.
+                company_id = company.id
+                company_name = company.name
+
                 lookback = company.logo_sync_lookback_days or 30
                 min_start = today - timedelta(days=lookback)
 
@@ -818,7 +825,7 @@ class GuvenLogoFatura(models.Model):
 
                 _logger.info(
                     "[GUVEN-LOGO] %s: %s → %s",
-                    company.name, cursor_date, block_end,
+                    company_name, cursor_date, block_end,
                 )
 
                 # 1) Sync — dönem sınırına göre parçalara böl, çek ve commit et.
@@ -845,37 +852,37 @@ class GuvenLogoFatura(models.Model):
                     total_updated += result['updated']
                     total_deleted += result['deleted']
                 except Exception:
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Sync hatası, sonraki şirkete geçiliyor",
-                        company.name,
-                    )
                     self.env.cr.rollback()
                     self.env.invalidate_all()
+                    _logger.exception(
+                        "[GUVEN-LOGO] %s: Sync hatası, sonraki şirkete geçiliyor",
+                        company_name,
+                    )
                     continue
 
                 # 2) Logo eşleştirme (GİB → Logo) — kendi transaction'ı.
                 try:
                     self.env['guven.fatura']._match_logo_invoices(
-                        cursor_date, block_end, [company.id],
+                        cursor_date, block_end, [company_id],
                     )
                     self.env.cr.commit()
                 except Exception:
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Logo eşleştirme hatası", company.name,
-                    )
                     self.env.cr.rollback()
                     self.env.invalidate_all()
+                    _logger.exception(
+                        "[GUVEN-LOGO] %s: Logo eşleştirme hatası", company_name,
+                    )
 
                 # 3) Ters eşleştirme (Logo → GİB) — kendi transaction'ı.
                 try:
-                    self._match_gib_invoices(cursor_date, block_end, [company.id])
+                    self._match_gib_invoices(cursor_date, block_end, [company_id])
                     self.env.cr.commit()
                 except Exception:
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Ters eşleştirme hatası", company.name,
-                    )
                     self.env.cr.rollback()
                     self.env.invalidate_all()
+                    _logger.exception(
+                        "[GUVEN-LOGO] %s: Ters eşleştirme hatası", company_name,
+                    )
 
                 # 4) Cursor'ı ilerlet — ayrı transaction; eşleştirme fail etse
                 #    bile sync başarılı olduğu için cursor ilerlemeli.
@@ -887,15 +894,15 @@ class GuvenLogoFatura(models.Model):
                     company.sudo().write(write_vals)
                     self.env.cr.commit()
                 except Exception:
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Cursor ilerletme hatası", company.name,
-                    )
                     self.env.cr.rollback()
                     self.env.invalidate_all()
+                    _logger.exception(
+                        "[GUVEN-LOGO] %s: Cursor ilerletme hatası", company_name,
+                    )
 
                 _logger.info(
                     "[GUVEN-LOGO] %s: %d yeni, %d güncellenen, %d silinen",
-                    company.name, result['created'], result['updated'],
+                    company_name, result['created'], result['updated'],
                     result['deleted'],
                 )
 
