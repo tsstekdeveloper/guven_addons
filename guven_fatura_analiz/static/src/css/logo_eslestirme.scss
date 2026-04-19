@@ -7,17 +7,24 @@
         color: inherit !important;
     }
 
-    /* Tek eşleşme ama fark var: daha açık yeşil */
+    /* Tek eşleşme ama fark var: açık yeşil */
     tr.text-info,
     tr.text-info td {
         background-color: #c3e6cb !important;
         color: inherit !important;
     }
 
-    /* Eşleşme yok veya çoklu eşleşme: açık pembe */
+    /* Çoklu eşleşme: açık pembe */
+    tr.text-warning,
+    tr.text-warning td {
+        background-color: #f8d7da !important;
+        color: inherit !important;
+    }
+
+    /* Hiç eşleşmeyen: belirgin koyu pembe */
     tr.text-danger,
     tr.text-danger td {
-        background-color: #f8d7da !important;
+        background-color: #e88890 !important;
         color: inherit !important;
     }
 }
@@ -36,9 +43,15 @@
         color: inherit !important;
     }
 
+    tr.text-warning,
+    tr.text-warning td {
+        background-color: #f8d7da !important;
+        color: inherit !important;
+    }
+
     tr.text-danger,
     tr.text-danger td {
-        background-color: #f8d7da !important;
+        background-color: #e88890 !important;
         color: inherit !important;
     }
 }
