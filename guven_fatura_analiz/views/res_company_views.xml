@@ -74,7 +74,8 @@
                                        readonly="not can_edit_fatura_settings"/>
                                 <field name="efatura_sync_cursor_date"
                                        readonly="not can_edit_fatura_settings"/>
-                                <field name="efatura_sync_last_completed_date" readonly="1"/>
+                                <field name="efatura_sync_last_completed_date"
+                                       readonly="not can_edit_fatura_settings"/>
                             </group>
                         </group>
                         <div>
@@ -143,7 +144,7 @@
                                         <field name="logo_sync_cursor_date"
                                                readonly="not can_edit_fatura_settings"/>
                                         <field name="logo_sync_last_completed_date"
-                                               readonly="1"/>
+                                               readonly="not can_edit_fatura_settings"/>
                                     </group>
                                 </group>
                             </page>
