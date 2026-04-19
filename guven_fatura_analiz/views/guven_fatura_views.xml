@@ -278,7 +278,8 @@
                       class="o_logo_eslestirme"
                       default_order="issue_date desc, invoice_id desc"
                       decoration-success="logo_fatura_count == 1 and perfect_fit"
-                      decoration-danger="logo_fatura_count != 1 or not perfect_fit"
+                      decoration-info="logo_fatura_count == 1 and not perfect_fit"
+                      decoration-danger="logo_fatura_count != 1"
                       create="0" delete="0">
                     <field name="perfect_fit" column_invisible="1"/>
                     <field name="direction"/>

@@ -1,13 +1,20 @@
 /* GİB >>> Logo Eşleştirme list view - row background colors */
 .o_logo_eslestirme {
-    /* Single match: light green background */
+    /* Perfect fit (tek eşleşme + sıfır fark): belirgin koyu yeşil */
     tr.text-success,
     tr.text-success td {
         background-color: #86cf90 !important;
         color: inherit !important;
     }
 
-    /* No match or mismatch: light red background */
+    /* Tek eşleşme ama fark var: daha açık yeşil */
+    tr.text-info,
+    tr.text-info td {
+        background-color: #c3e6cb !important;
+        color: inherit !important;
+    }
+
+    /* Eşleşme yok veya çoklu eşleşme: açık pembe */
     tr.text-danger,
     tr.text-danger td {
         background-color: #f8d7da !important;
@@ -17,14 +24,18 @@
 
 /* Logo >>> GİB Eşleştirme list view - row background colors */
 .o_gib_eslestirme {
-    /* Single match: light green background */
     tr.text-success,
     tr.text-success td {
         background-color: #86cf90 !important;
         color: inherit !important;
     }
 
-    /* No match or mismatch: light red background */
+    tr.text-info,
+    tr.text-info td {
+        background-color: #c3e6cb !important;
+        color: inherit !important;
+    }
+
     tr.text-danger,
     tr.text-danger td {
         background-color: #f8d7da !important;
