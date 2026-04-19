@@ -92,7 +92,14 @@
                                 <field name="gib_fatura_gelen_ids"
                                        readonly="1" nolabel="1">
                                     <list create="0" edit="0" delete="0"
-                                          default_order="issue_date desc">
+                                          class="o_logo_eslestirme"
+                                          default_order="issue_date desc"
+                                          decoration-success="logo_fatura_count == 1 and perfect_fit"
+                                          decoration-info="logo_fatura_count == 1 and not perfect_fit"
+                                          decoration-warning="logo_fatura_count > 1"
+                                          decoration-danger="logo_fatura_count == 0">
+                                        <field name="perfect_fit" column_invisible="1"/>
+                                        <field name="logo_fatura_count" column_invisible="1"/>
                                         <field name="invoice_id"/>
                                         <field name="issue_date"/>
                                         <field name="kaynak"/>
@@ -120,7 +127,14 @@
                                 <field name="gib_fatura_giden_ids"
                                        readonly="1" nolabel="1">
                                     <list create="0" edit="0" delete="0"
-                                          default_order="issue_date desc">
+                                          class="o_logo_eslestirme"
+                                          default_order="issue_date desc"
+                                          decoration-success="logo_fatura_count == 1 and perfect_fit"
+                                          decoration-info="logo_fatura_count == 1 and not perfect_fit"
+                                          decoration-warning="logo_fatura_count > 1"
+                                          decoration-danger="logo_fatura_count == 0">
+                                        <field name="perfect_fit" column_invisible="1"/>
+                                        <field name="logo_fatura_count" column_invisible="1"/>
                                         <field name="invoice_id"/>
                                         <field name="issue_date"/>
                                         <field name="kaynak"/>
@@ -148,7 +162,14 @@
                                 <field name="logo_fatura_gelen_ids"
                                        readonly="1" nolabel="1">
                                     <list create="0" edit="0" delete="0"
-                                          default_order="fatura_tarihi_1 desc">
+                                          class="o_gib_eslestirme"
+                                          default_order="fatura_tarihi_1 desc"
+                                          decoration-success="gib_fatura_count == 1 and perfect_fit"
+                                          decoration-info="gib_fatura_count == 1 and not perfect_fit"
+                                          decoration-warning="gib_fatura_count > 1"
+                                          decoration-danger="gib_fatura_count == 0">
+                                        <field name="perfect_fit" column_invisible="1"/>
+                                        <field name="gib_fatura_count" column_invisible="1"/>
                                         <field name="fatura_no_1"/>
                                         <field name="fatura_tarihi_1"/>
                                         <field name="fatura_tipi"/>
@@ -174,7 +195,14 @@
                                 <field name="logo_fatura_giden_ids"
                                        readonly="1" nolabel="1">
                                     <list create="0" edit="0" delete="0"
-                                          default_order="fatura_tarihi_1 desc">
+                                          class="o_gib_eslestirme"
+                                          default_order="fatura_tarihi_1 desc"
+                                          decoration-success="gib_fatura_count == 1 and perfect_fit"
+                                          decoration-info="gib_fatura_count == 1 and not perfect_fit"
+                                          decoration-warning="gib_fatura_count > 1"
+                                          decoration-danger="gib_fatura_count == 0">
+                                        <field name="perfect_fit" column_invisible="1"/>
+                                        <field name="gib_fatura_count" column_invisible="1"/>
                                         <field name="fatura_no_1"/>
                                         <field name="fatura_tarihi_1"/>
                                         <field name="fatura_tipi"/>
