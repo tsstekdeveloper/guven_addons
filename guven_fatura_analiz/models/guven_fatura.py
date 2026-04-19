@@ -186,6 +186,13 @@ class GuvenFatura(models.Model):
     kimlik_farkli = fields.Boolean(string='Kimlik Farklı', default=False, copy=False)
     fatura_tarihi_farkli = fields.Boolean(string='Tarih Farklı', default=False, copy=False)
     yon_farkli = fields.Boolean(string='Yön Farklı', default=False, copy=False)
+    perfect_fit = fields.Boolean(
+        string='Tam Eşleşme',
+        compute='_compute_perfect_fit',
+        store=True,
+        index=True,
+        copy=False,
+    )
     logo_karsilastirma_html = fields.Html(
         string='Karşılaştırma', compute='_compute_logo_karsilastirma_html',
         sanitize=False,
@@ -308,6 +315,19 @@ class GuvenFatura(models.Model):
         is_yonetici = self.env.user.has_group('guven_fatura_analiz.group_muhasebe_yoneticisi')
         for record in self:
             record.is_muhasebe_yoneticisi = is_yonetici
+
+    @api.depends(
+        'tutar_farki_var', 'kimlik_farkli',
+        'fatura_tarihi_farkli', 'yon_farkli',
+    )
+    def _compute_perfect_fit(self):
+        for rec in self:
+            rec.perfect_fit = not (
+                rec.tutar_farki_var
+                or rec.kimlik_farkli
+                or rec.fatura_tarihi_farkli
+                or rec.yon_farkli
+            )
 
     @api.depends(
         'logo_fatura_count', 'logo_fatura_vkn', 'logo_fatura_tckn',

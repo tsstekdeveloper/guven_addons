@@ -1,6 +1,6 @@
 {
     'name': 'Güven Hastanesi Fatura Analiz Uygulaması',
-    'version': '19.0.1.4.3',
+    'version': '19.0.1.5.0',
     'category': 'Accounting',
     'summary': 'E-Fatura analiz ve takip modülü',
     'description': """

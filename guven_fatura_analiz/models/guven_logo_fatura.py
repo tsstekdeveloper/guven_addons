@@ -170,6 +170,13 @@ class GuvenLogoFatura(models.Model):
     kimlik_farkli = fields.Boolean(string='Kimlik Farklı', default=False, copy=False)
     fatura_tarihi_farkli = fields.Boolean(string='Tarih Farklı', default=False, copy=False)
     yon_farkli = fields.Boolean(string='Yön Farklı', default=False, copy=False)
+    perfect_fit = fields.Boolean(
+        string='Tam Eşleşme',
+        compute='_compute_perfect_fit',
+        store=True,
+        index=True,
+        copy=False,
+    )
     gib_karsilastirma_html = fields.Html(
         string='Karşılaştırma', compute='_compute_gib_karsilastirma_html', sanitize=False,
     )
@@ -181,6 +188,19 @@ class GuvenLogoFatura(models.Model):
     )
 
     # ── Computed: GİB Karşılaştırma HTML ─────────────────────────
+
+    @api.depends(
+        'tutar_farki_var', 'kimlik_farkli',
+        'fatura_tarihi_farkli', 'yon_farkli',
+    )
+    def _compute_perfect_fit(self):
+        for rec in self:
+            rec.perfect_fit = not (
+                rec.tutar_farki_var
+                or rec.kimlik_farkli
+                or rec.fatura_tarihi_farkli
+                or rec.yon_farkli
+            )
 
     @api.depends(
         'gib_fatura_count', 'gib_kimlik',
