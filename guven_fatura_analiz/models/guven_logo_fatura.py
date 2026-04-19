@@ -822,7 +822,25 @@ class GuvenLogoFatura(models.Model):
                 )
 
                 try:
-                    result = self._sync_company(company, cursor_date, block_end)
+                    # Blok dönem sınırını kesiyorsa parçalara böl — aksi
+                    # halde tek firma kodu tablosu sorgulanır ve diğer
+                    # dönemin kayıtları kaçırılır (örn. 2022-12-22 → 2023-01-20
+                    # bloğu sadece LG_550'den çeker, 2023-01 LG_600 kayıtları
+                    # kaçar).
+                    Donem = self.env['guven.logo.donem']
+                    parcalar = Donem.tarih_araligini_bol(
+                        company, cursor_date, block_end,
+                    )
+                    if not parcalar:
+                        # Dönem kaydı yoksa tek parça (fallback)
+                        parcalar = [(cursor_date, block_end, None)]
+
+                    result = {'created': 0, 'updated': 0, 'deleted': 0,
+                              'fetched': 0}
+                    for parca_from, parca_to, _kod in parcalar:
+                        r = self._sync_company(company, parca_from, parca_to)
+                        for k in ('created', 'updated', 'deleted', 'fetched'):
+                            result[k] += r.get(k, 0)
 
                     total_created += result['created']
                     total_updated += result['updated']
