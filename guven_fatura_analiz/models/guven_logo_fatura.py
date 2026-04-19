@@ -821,18 +821,15 @@ class GuvenLogoFatura(models.Model):
                     company.name, cursor_date, block_end,
                 )
 
+                # 1) Sync — dönem sınırına göre parçalara böl, çek ve commit et.
+                #    Eşleştirme veya cursor write aşamasında concurrent update
+                #    hatası olsa bile yeni çekilen Logo kayıtları korunur.
                 try:
-                    # Blok dönem sınırını kesiyorsa parçalara böl — aksi
-                    # halde tek firma kodu tablosu sorgulanır ve diğer
-                    # dönemin kayıtları kaçırılır (örn. 2022-12-22 → 2023-01-20
-                    # bloğu sadece LG_550'den çeker, 2023-01 LG_600 kayıtları
-                    # kaçar).
                     Donem = self.env['guven.logo.donem']
                     parcalar = Donem.tarih_araligini_bol(
                         company, cursor_date, block_end,
                     )
                     if not parcalar:
-                        # Dönem kaydı yoksa tek parça (fallback)
                         parcalar = [(cursor_date, block_end, None)]
 
                     result = {'created': 0, 'updated': 0, 'deleted': 0,
@@ -842,41 +839,11 @@ class GuvenLogoFatura(models.Model):
                         for k in ('created', 'updated', 'deleted', 'fetched'):
                             result[k] += r.get(k, 0)
 
+                    self.env.cr.commit()
+
                     total_created += result['created']
                     total_updated += result['updated']
                     total_deleted += result['deleted']
-
-                    # Logo eşleştirme (GİB → Logo)
-                    try:
-                        self.env['guven.fatura']._match_logo_invoices(
-                            cursor_date, block_end, [company.id],
-                        )
-                    except Exception:
-                        _logger.exception(
-                            "[GUVEN-LOGO] %s: Logo eşleştirme hatası", company.name,
-                        )
-
-                    # Ters eşleştirme (Logo → GİB)
-                    try:
-                        self._match_gib_invoices(cursor_date, block_end, [company.id])
-                    except Exception:
-                        _logger.exception(
-                            "[GUVEN-LOGO] %s: Ters eşleştirme hatası", company.name,
-                        )
-
-                    # Cursor'ı ilerlet
-                    next_cursor = block_end + timedelta(days=1)
-                    write_vals = {'logo_sync_cursor_date': next_cursor}
-                    if next_cursor >= today:
-                        write_vals['logo_sync_last_completed_date'] = today
-                    company.sudo().write(write_vals)
-                    self.env.cr.commit()
-
-                    _logger.info(
-                        "[GUVEN-LOGO] %s: %d yeni, %d güncellenen, %d silinen",
-                        company.name, result['created'], result['updated'],
-                        result['deleted'],
-                    )
                 except Exception:
                     _logger.exception(
                         "[GUVEN-LOGO] %s: Sync hatası, sonraki şirkete geçiliyor",
@@ -885,6 +852,52 @@ class GuvenLogoFatura(models.Model):
                     self.env.cr.rollback()
                     self.env.invalidate_all()
                     continue
+
+                # 2) Logo eşleştirme (GİB → Logo) — kendi transaction'ı.
+                try:
+                    self.env['guven.fatura']._match_logo_invoices(
+                        cursor_date, block_end, [company.id],
+                    )
+                    self.env.cr.commit()
+                except Exception:
+                    _logger.exception(
+                        "[GUVEN-LOGO] %s: Logo eşleştirme hatası", company.name,
+                    )
+                    self.env.cr.rollback()
+                    self.env.invalidate_all()
+
+                # 3) Ters eşleştirme (Logo → GİB) — kendi transaction'ı.
+                try:
+                    self._match_gib_invoices(cursor_date, block_end, [company.id])
+                    self.env.cr.commit()
+                except Exception:
+                    _logger.exception(
+                        "[GUVEN-LOGO] %s: Ters eşleştirme hatası", company.name,
+                    )
+                    self.env.cr.rollback()
+                    self.env.invalidate_all()
+
+                # 4) Cursor'ı ilerlet — ayrı transaction; eşleştirme fail etse
+                #    bile sync başarılı olduğu için cursor ilerlemeli.
+                try:
+                    next_cursor = block_end + timedelta(days=1)
+                    write_vals = {'logo_sync_cursor_date': next_cursor}
+                    if next_cursor >= today:
+                        write_vals['logo_sync_last_completed_date'] = today
+                    company.sudo().write(write_vals)
+                    self.env.cr.commit()
+                except Exception:
+                    _logger.exception(
+                        "[GUVEN-LOGO] %s: Cursor ilerletme hatası", company.name,
+                    )
+                    self.env.cr.rollback()
+                    self.env.invalidate_all()
+
+                _logger.info(
+                    "[GUVEN-LOGO] %s: %d yeni, %d güncellenen, %d silinen",
+                    company.name, result['created'], result['updated'],
+                    result['deleted'],
+                )
 
             elapsed = time.time() - t0
             _logger.info(
