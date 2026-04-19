@@ -171,6 +171,7 @@
                                         <field name="perfect_fit" column_invisible="1"/>
                                         <field name="gib_fatura_count" column_invisible="1"/>
                                         <field name="fatura_no_1"/>
+                                        <field name="fatura_no_2"/>
                                         <field name="fatura_tarihi_1"/>
                                         <field name="fatura_tipi"/>
                                         <field name="fatura_tutari"
@@ -204,6 +205,7 @@
                                         <field name="perfect_fit" column_invisible="1"/>
                                         <field name="gib_fatura_count" column_invisible="1"/>
                                         <field name="fatura_no_1"/>
+                                        <field name="fatura_no_2"/>
                                         <field name="fatura_tarihi_1"/>
                                         <field name="fatura_tipi"/>
                                         <field name="fatura_tutari"
