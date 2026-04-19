@@ -76,6 +76,9 @@
                             <field name="kaynak" readonly="1"/>
                         </group>
 
+                        <field name="fatura_ozet_html" readonly="1"
+                               nolabel="1"/>
+
                         <notebook>
                             <page string="GİB Faturaları (Gelen)"
                                   name="gib_gelen">
