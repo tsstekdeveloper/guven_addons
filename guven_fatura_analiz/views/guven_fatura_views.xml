@@ -277,9 +277,10 @@
                 <list string="GİB → Logo Eşleştirme"
                       class="o_logo_eslestirme"
                       default_order="issue_date desc, invoice_id desc"
-                      decoration-success="logo_fatura_count == 1 and not tutar_farki_var and not kimlik_farkli and not fatura_tarihi_farkli and not yon_farkli"
-                      decoration-danger="logo_fatura_count != 1 or tutar_farki_var or kimlik_farkli or fatura_tarihi_farkli or yon_farkli"
+                      decoration-success="logo_fatura_count == 1 and perfect_fit"
+                      decoration-danger="logo_fatura_count != 1 or not perfect_fit"
                       create="0" delete="0">
+                    <field name="perfect_fit" column_invisible="1"/>
                     <field name="direction"/>
                     <field name="kaynak"/>
                     <field name="invoice_id"/>
