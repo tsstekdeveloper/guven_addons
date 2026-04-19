@@ -2,6 +2,8 @@ import logging
 import time
 from datetime import date, timedelta
 
+import psycopg2
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -759,6 +761,48 @@ class GuvenLogoFatura(models.Model):
 
     # ── Cron Entry Point ─────────────────────────────────────────
 
+    def _run_match_step_with_retry(
+        self, func, company_name, step_name, max_attempts=3,
+    ):
+        """Eşleştirme adımını SerializationFailure durumunda tekrar dener.
+
+        E-Arşiv/E-Fatura detay cron'ları paralel çalıştığında aynı
+        guven_fatura satırlarını günceller ve concurrent update hatası
+        oluşabilir. Retry + backoff ile transient çakışmayı çözeriz.
+        """
+        for attempt in range(1, max_attempts + 1):
+            try:
+                func()
+                self.env.cr.commit()
+                return True
+            except psycopg2.errors.SerializationFailure:
+                self.env.cr.rollback()
+                self.env.invalidate_all()
+                if attempt < max_attempts:
+                    backoff = 0.5 * (2 ** (attempt - 1))
+                    _logger.warning(
+                        "[GUVEN-LOGO] %s: %s concurrent update "
+                        "(deneme %d/%d), %.1f sn bekleyip tekrar deneniyor",
+                        company_name, step_name, attempt, max_attempts,
+                        backoff,
+                    )
+                    time.sleep(backoff)
+                    continue
+                _logger.error(
+                    "[GUVEN-LOGO] %s: %s %d denemede çözülemedi "
+                    "(SerializationFailure)",
+                    company_name, step_name, max_attempts,
+                )
+                return False
+            except Exception:
+                self.env.cr.rollback()
+                self.env.invalidate_all()
+                _logger.exception(
+                    "[GUVEN-LOGO] %s: %s hatası", company_name, step_name,
+                )
+                return False
+        return False
+
     @api.model
     def _cron_sync_logo(self):
         """Tüm şirketler için Logo MSSQL fatura sync (30 günlük bloklar)."""
@@ -860,29 +904,21 @@ class GuvenLogoFatura(models.Model):
                     )
                     continue
 
-                # 2) Logo eşleştirme (GİB → Logo) — kendi transaction'ı.
-                try:
-                    self.env['guven.fatura']._match_logo_invoices(
+                # 2) Logo eşleştirme (GİB → Logo) — kendi transaction'ı + retry.
+                self._run_match_step_with_retry(
+                    lambda: self.env['guven.fatura']._match_logo_invoices(
                         cursor_date, block_end, [company_id],
-                    )
-                    self.env.cr.commit()
-                except Exception:
-                    self.env.cr.rollback()
-                    self.env.invalidate_all()
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Logo eşleştirme hatası", company_name,
-                    )
+                    ),
+                    company_name, "Logo eşleştirme",
+                )
 
-                # 3) Ters eşleştirme (Logo → GİB) — kendi transaction'ı.
-                try:
-                    self._match_gib_invoices(cursor_date, block_end, [company_id])
-                    self.env.cr.commit()
-                except Exception:
-                    self.env.cr.rollback()
-                    self.env.invalidate_all()
-                    _logger.exception(
-                        "[GUVEN-LOGO] %s: Ters eşleştirme hatası", company_name,
-                    )
+                # 3) Ters eşleştirme (Logo → GİB) — kendi transaction'ı + retry.
+                self._run_match_step_with_retry(
+                    lambda: self._match_gib_invoices(
+                        cursor_date, block_end, [company_id],
+                    ),
+                    company_name, "Ters eşleştirme",
+                )
 
                 # 4) Cursor'ı ilerlet — ayrı transaction; eşleştirme fail etse
                 #    bile sync başarılı olduğu için cursor ilerlemeli.
