@@ -866,15 +866,11 @@ class GuvenLogoFatura(models.Model):
                 if last_completed and last_completed >= today:
                     continue
 
-                # Cursor'ı belirle
+                # Cursor'ı belirle (header sync ile aynı mantık)
                 cursor_date = company.logo_sync_cursor_date
                 if not cursor_date:
                     cursor_date = min_start
                 elif last_completed and last_completed < today and cursor_date >= today:
-                    cursor_date = min_start
-
-                # Güvenlik: lookback_days küçültüldüyse cursor'ı düzelt
-                if cursor_date < min_start:
                     cursor_date = min_start
 
                 # Cursor zaten bugüne ulaştıysa turu tamamla
