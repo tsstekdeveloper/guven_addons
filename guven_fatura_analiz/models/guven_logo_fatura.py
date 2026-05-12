@@ -291,8 +291,49 @@ class GuvenLogoFatura(models.Model):
 
     # ── GİB Eşleştirme (Logo → GİB ters yön) ────────────────────
 
+    def _mark_gib_unmatched(self, logo_rec, stats, note=False):
+        """Logo kaydını unmatched işaretle, GİB alanlarını temizle.
+
+        Çakışma reddi ve hiç aday bulunmama durumlarının ortak yardımcısı.
+        """
+        stats['unmatched'] += 1
+        logo_rec.write({
+            'gib_fatura_ids': [(5, 0, 0)],
+            'gib_fatura_count': 0,
+            'gib_fatura_no': False,
+            'gib_fatura_tarihi': False,
+            'gib_fatura_tutari': 0.0,
+            'gib_kimlik': False,
+            'gib_kaynak': False,
+            'tutar_farki_var': False,
+            'tutar_farki': 0.0,
+            'kimlik_farkli': False,
+            'fatura_tarihi_farkli': False,
+            'yon_farkli': False,
+            'gib_notes': note or False,
+        })
+
     def _process_single_gib_match(self, logo_rec, gib_rec, stats):
         """Tek eşleşme için fark analizi yap ve İKİ TARAFA yaz (Logo + GİB)."""
+        # ÇAKIŞMA KONTROLÜ: GİB zaten BAŞKA bir Logo ile perfect kilitli mi?
+        # First-come-first-served — sonradan gelen aday reddedilir, kilitli olan korunur.
+        if (gib_rec.logo_fatura_count == 1 and gib_rec.perfect_fit
+                and gib_rec.logo_fatura_ids
+                and gib_rec.logo_fatura_ids[0].id != logo_rec.id):
+            existing_logo = gib_rec.logo_fatura_ids[0]
+            note = (
+                f"GİB {gib_rec.invoice_id} zaten Logo {existing_logo.id} "
+                f"ile perfect kilitli — çakışma nedeniyle eşleşme reddedildi."
+            )
+            _logger.info(
+                "[GUVEN-MATCH] Çakışma reddedildi: Logo %s → GİB %s "
+                "(mevcut: Logo %s)",
+                logo_rec.id, gib_rec.invoice_id, existing_logo.id,
+            )
+            stats['rejected_collision'] += 1
+            self._mark_gib_unmatched(logo_rec, stats, note=note)
+            return
+
         # Ortak fark hesabı (guven.fatura tarafındaki helper'ı kullan)
         diffs = self.env['guven.fatura']._compute_match_diffs(
             gib_rec, logo_rec, self.env,
@@ -373,7 +414,8 @@ class GuvenLogoFatura(models.Model):
         if not logo_recs:
             return {
                 'total': 0, 'matched_single': 0, 'matched_multi': 0,
-                'unmatched': 0, 'tutar_farki': 0, 'kimlik_farkli': 0,
+                'unmatched': 0, 'rejected_collision': 0,
+                'tutar_farki': 0, 'kimlik_farkli': 0,
                 'fatura_tarihi_farkli': 0, 'yon_farkli': 0,
             }
 
@@ -417,6 +459,7 @@ class GuvenLogoFatura(models.Model):
             'matched_single': 0,
             'matched_multi': 0,
             'unmatched': 0,
+            'rejected_collision': 0,
             'tutar_farki': 0,
             'kimlik_farkli': 0,
             'fatura_tarihi_farkli': 0,
@@ -448,23 +491,8 @@ class GuvenLogoFatura(models.Model):
             match_count = len(matches)
 
             if match_count == 0:
-                # Eşleşme yok — alanları temizle
-                stats['unmatched'] += 1
-                logo_rec.write({
-                    'gib_fatura_ids': [(5, 0, 0)],
-                    'gib_fatura_count': 0,
-                    'gib_fatura_no': False,
-                    'gib_fatura_tarihi': False,
-                    'gib_fatura_tutari': 0.0,
-                    'gib_kimlik': False,
-                    'gib_kaynak': False,
-                    'tutar_farki_var': False,
-                    'tutar_farki': 0.0,
-                    'kimlik_farkli': False,
-                    'fatura_tarihi_farkli': False,
-                    'yon_farkli': False,
-                    'gib_notes': False,
-                })
+                # Eşleşme yok
+                self._mark_gib_unmatched(logo_rec, stats)
 
             elif match_count == 1:
                 stats['matched_single'] += 1

@@ -1822,8 +1822,54 @@ class GuvenFatura(models.Model):
             or diffs['fatura_tarihi_farkli'] or diffs['yon_farkli']
         )
 
+    def _mark_logo_unmatched(self, fatura, stats, note=False):
+        """GİB faturasını unmatched işaretle, Logo alanlarını temizle.
+
+        Çakışma reddi ve hiç aday bulunmama durumlarının ortak yardımcısı.
+        """
+        stats['unmatched'] += 1
+        try:
+            fatura.write({
+                'logo_fatura_ids': [(5, 0, 0)],
+                'logo_fatura_count': 0,
+                'logo_mssql_id': False,
+                'logo_fatura_tarihi': False,
+                'logo_fatura_tutari': 0.0,
+                'logo_fatura_vkn': False,
+                'logo_fatura_tckn': False,
+                'tutar_farki_var': False,
+                'tutar_farki': 0.0,
+                'kimlik_farkli': False,
+                'fatura_tarihi_farkli': False,
+                'yon_farkli': False,
+                'logo_notes': note or False,
+            })
+        except UserError:
+            _logger.warning(
+                "[GUVEN-MATCH] Kilitli kayıt atlandı: %s", fatura.invoice_id,
+            )
+
     def _process_single_match(self, fatura, lr, stats):
         """Tek eşleşme için fark analizi yap ve İKİ TARAFA yaz (GİB + Logo)."""
+        # ÇAKIŞMA KONTROLÜ: Logo zaten BAŞKA bir GİB ile perfect kilitli mi?
+        # First-come-first-served — sonradan gelen aday reddedilir, kilitli olan korunur.
+        if (lr.gib_fatura_count == 1 and lr.perfect_fit
+                and lr.gib_fatura_ids
+                and lr.gib_fatura_ids[0].id != fatura.id):
+            existing_gib = lr.gib_fatura_ids[0]
+            note = (
+                f"Logo {lr.id} zaten GİB {existing_gib.invoice_id} "
+                f"ile perfect kilitli — çakışma nedeniyle eşleşme reddedildi."
+            )
+            _logger.info(
+                "[GUVEN-MATCH] Çakışma reddedildi: GİB %s → Logo %s "
+                "(mevcut: GİB %s)",
+                fatura.invoice_id, lr.id, existing_gib.invoice_id,
+            )
+            stats['rejected_collision'] += 1
+            self._mark_logo_unmatched(fatura, stats, note=note)
+            return
+
         diffs = self._compute_match_diffs(fatura, lr, self.env)
 
         if diffs['tutar_farki_var']:
@@ -1897,7 +1943,8 @@ class GuvenFatura(models.Model):
         if not faturas:
             return {
                 'total': 0, 'matched_single': 0, 'matched_multi': 0,
-                'unmatched': 0, 'tutar_farki': 0, 'kimlik_farkli': 0,
+                'unmatched': 0, 'rejected_collision': 0,
+                'tutar_farki': 0, 'kimlik_farkli': 0,
                 'fatura_tarihi_farkli': 0, 'yon_farkli': 0,
             }
 
@@ -1933,6 +1980,7 @@ class GuvenFatura(models.Model):
             'matched_single': 0,
             'matched_multi': 0,
             'unmatched': 0,
+            'rejected_collision': 0,
             'tutar_farki': 0,
             'kimlik_farkli': 0,
             'fatura_tarihi_farkli': 0,
@@ -1966,28 +2014,8 @@ class GuvenFatura(models.Model):
             match_count = len(matches)
 
             if match_count == 0:
-                # Eşleşme yok — Logo alanlarını temizle
-                stats['unmatched'] += 1
-                try:
-                    fatura.write({
-                        'logo_fatura_ids': [(5, 0, 0)],
-                        'logo_fatura_count': 0,
-                        'logo_mssql_id': False,
-                        'logo_fatura_tarihi': False,
-                        'logo_fatura_tutari': 0.0,
-                        'logo_fatura_vkn': False,
-                        'logo_fatura_tckn': False,
-                        'tutar_farki_var': False,
-                        'tutar_farki': 0.0,
-                        'kimlik_farkli': False,
-                        'fatura_tarihi_farkli': False,
-                        'yon_farkli': False,
-                        'logo_notes': False,
-                    })
-                except UserError:
-                    _logger.warning(
-                        "[GUVEN-MATCH] Kilitli kayıt atlandı: %s", fatura.invoice_id,
-                    )
+                # Eşleşme yok
+                self._mark_logo_unmatched(fatura, stats)
 
             elif match_count == 1:
                 # Tek eşleşme — detay alanlarını doldur, fark analizi yap
