@@ -7,9 +7,9 @@
             <field name="model_id" ref="model_guven_fatura"/>
             <field name="state">code</field>
             <field name="code">model._cron_fetch_invoice_details()</field>
-            <field name="interval_number">2</field>
+            <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
-            <field name="active">False</field>
+            <field name="active">True</field>
         </record>
 
         <record id="ir_cron_fetch_earsiv_details" model="ir.cron">
@@ -17,9 +17,9 @@
             <field name="model_id" ref="model_guven_fatura"/>
             <field name="state">code</field>
             <field name="code">model._cron_fetch_earsiv_details()</field>
-            <field name="interval_number">2</field>
+            <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
-            <field name="active">False</field>
+            <field name="active">True</field>
         </record>
 
         <record id="ir_cron_sync_headers" model="ir.cron">
@@ -27,7 +27,7 @@
             <field name="model_id" ref="model_guven_fatura"/>
             <field name="state">code</field>
             <field name="code">model._cron_sync_headers()</field>
-            <field name="interval_number">10</field>
+            <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
             <field name="active">True</field>
             <field name="priority">5</field>
@@ -38,9 +38,9 @@
             <field name="model_id" ref="model_guven_logo_fatura"/>
             <field name="state">code</field>
             <field name="code">model._cron_sync_logo()</field>
-            <field name="interval_number">15</field>
+            <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
-            <field name="active">False</field>
+            <field name="active">True</field>
             <field name="priority">10</field>
         </record>
 

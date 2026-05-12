@@ -1643,7 +1643,7 @@ class GuvenFatura(models.Model):
         self.env.cr.commit()
 
     # ==================================================================
-    # CRON: HEADER SYNC (7 GÜNLÜK BLOKLAR)
+    # CRON: HEADER SYNC (1 GÜNLÜK SLICE'LAR, GÜN BAŞINDA today-lookback'e RESET)
     # ==================================================================
 
     @api.model
@@ -1672,13 +1672,9 @@ class GuvenFatura(models.Model):
                 if last_completed and last_completed >= today:
                     continue
 
-                # Cursor'ı belirle
+                # Cursor'ı belirle: ilk çalışma veya yeni gün → lookback başına reset
                 cursor = company.efatura_sync_cursor_date
-                if not cursor:
-                    # İlk çalışma — lookback başlangıcından başla
-                    cursor = min_start
-                elif last_completed and last_completed < today and cursor >= today:
-                    # Yeni gün, önceki tur tamamlanmıştı — yeni tur başlat
+                if not cursor or (last_completed and last_completed < today):
                     cursor = min_start
 
                 # Cursor zaten bugüne ulaştıysa turu tamamla
