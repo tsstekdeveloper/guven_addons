@@ -236,7 +236,10 @@ class GuvenFatura(models.Model):
         # False yap; self için vals'a ekle. Recursion: vals == {'perfect_fit'}
         # ise invalidate False kalır → karşı tarafa yazılan {'perfect_fit': False}
         # tekrar zincire girmez.
-        if set(vals.keys()) - {'perfect_fit'}:
+        # Bypass: eşleştirme algoritması simetrik yazımları yaparken
+        # skip_perfect_fit_invalidate=True context kullanır (ping-pong önleme).
+        skip = self.env.context.get('skip_perfect_fit_invalidate')
+        if not skip and (set(vals.keys()) - {'perfect_fit'}):
             related = self.mapped('logo_fatura_ids')
             if related:
                 related.sudo().write({'perfect_fit': False})
@@ -1756,75 +1759,121 @@ class GuvenFatura(models.Model):
     # LOGO EŞLEŞTİRME
     # ==================================================================
 
-    def _process_single_match(self, fatura, lr, stats):
-        """Tek eşleşme için fark analizi yap ve guven.fatura'ya yaz."""
-        # Tutar farkı
+    @staticmethod
+    def _compute_match_diffs(fatura, lr, env):
+        """GİB fatura ↔ Logo kaydı arasındaki 4 farkı hesapla, write yapmaz.
+
+        Hem perfect-aday tespiti hem _process_single_match tarafından kullanılır.
+        Returns dict.
+        """
+        # Tutar
         efatura_tutar = fatura.payable_amount_try or 0.0
         logo_tutar = lr.fatura_tutari or 0.0
         farki = efatura_tutar - logo_tutar
         tutar_farki_var = abs(farki) > 0.005
 
-        # Kimlik fark analizi (GIB VKN/TCKN aynı alanda → Logo VKN veya TCKN'ye eşitse OK)
+        # Kimlik (GİB tek alanı VKN veya TCKN olabilir; Logo'da iki ayrı alan)
         if fatura.direction == 'IN':
             gib_kimlik = (fatura.sender or '').strip()
         elif fatura.direction == 'OUT':
             gib_kimlik = (fatura.receiver or '').strip()
         else:
             gib_kimlik = ''
-
         logo_vkn = (lr.vkn or '').strip()
         logo_tckn = (lr.tckn or '').strip()
-
         kimlik_eslesti = (
             (logo_vkn and gib_kimlik == logo_vkn)
             or (logo_tckn and gib_kimlik == logo_tckn)
         )
         kimlik_farkli = bool(gib_kimlik) and not kimlik_eslesti
 
-        # Tarih farkı
+        # Tarih
         logo_tarihi = lr.fatura_tarihi_1 or lr.fatura_tarihi_2
         fatura_tarihi_farkli = bool(
             fatura.issue_date and logo_tarihi
             and fatura.issue_date != logo_tarihi
         )
 
-        # Yön farkı
-        LogoFatura = self.env['guven.logo.fatura']
-        logo_direction = LogoFatura._TRCODE_DIRECTION.get(lr.fatura_tipi)
+        # Yön
+        logo_direction = env['guven.logo.fatura']._TRCODE_DIRECTION.get(lr.fatura_tipi)
         yon_farkli = bool(
             logo_direction and fatura.direction
             and logo_direction != fatura.direction
         )
 
-        if tutar_farki_var:
+        return {
+            'tutar_farki_var': tutar_farki_var,
+            'tutar_farki': round(farki, 2),
+            'kimlik_farkli': kimlik_farkli,
+            'fatura_tarihi_farkli': fatura_tarihi_farkli,
+            'yon_farkli': yon_farkli,
+            'gib_kimlik': gib_kimlik,
+            'logo_tutar': logo_tutar,
+            'logo_tarihi': logo_tarihi,
+            'logo_vkn': logo_vkn,
+            'logo_tckn': logo_tckn,
+        }
+
+    @staticmethod
+    def _is_perfect_match(diffs):
+        """4 kriterin tümü eşit mi?"""
+        return not (
+            diffs['tutar_farki_var'] or diffs['kimlik_farkli']
+            or diffs['fatura_tarihi_farkli'] or diffs['yon_farkli']
+        )
+
+    def _process_single_match(self, fatura, lr, stats):
+        """Tek eşleşme için fark analizi yap ve İKİ TARAFA yaz (GİB + Logo)."""
+        diffs = self._compute_match_diffs(fatura, lr, self.env)
+
+        if diffs['tutar_farki_var']:
             stats['tutar_farki'] += 1
-        if kimlik_farkli:
+        if diffs['kimlik_farkli']:
             stats['kimlik_farkli'] += 1
-        if fatura_tarihi_farkli:
+        if diffs['fatura_tarihi_farkli']:
             stats['fatura_tarihi_farkli'] += 1
-        if yon_farkli:
+        if diffs['yon_farkli']:
             stats['yon_farkli'] += 1
 
+        # GİB tarafı
         try:
             fatura.write({
                 'logo_fatura_ids': [(6, 0, [lr.id])],
                 'logo_fatura_count': 1,
                 'logo_mssql_id': lr.logo_id,
-                'logo_fatura_tarihi': lr.fatura_tarihi_1 or lr.fatura_tarihi_2,
-                'logo_fatura_tutari': logo_tutar,
-                'logo_fatura_vkn': logo_vkn or False,
-                'logo_fatura_tckn': logo_tckn or False,
-                'tutar_farki_var': tutar_farki_var,
-                'tutar_farki': round(farki, 2),
-                'kimlik_farkli': kimlik_farkli,
-                'fatura_tarihi_farkli': fatura_tarihi_farkli,
-                'yon_farkli': yon_farkli,
+                'logo_fatura_tarihi': diffs['logo_tarihi'],
+                'logo_fatura_tutari': diffs['logo_tutar'],
+                'logo_fatura_vkn': diffs['logo_vkn'] or False,
+                'logo_fatura_tckn': diffs['logo_tckn'] or False,
+                'tutar_farki_var': diffs['tutar_farki_var'],
+                'tutar_farki': diffs['tutar_farki'],
+                'kimlik_farkli': diffs['kimlik_farkli'],
+                'fatura_tarihi_farkli': diffs['fatura_tarihi_farkli'],
+                'yon_farkli': diffs['yon_farkli'],
                 'logo_notes': False,
             })
         except UserError:
             _logger.warning(
                 "[GUVEN-MATCH] Kilitli kayıt atlandı: %s", fatura.invoice_id,
             )
+            return
+
+        # Logo tarafı (simetrik) — ping-pong invalidasyonunu önlemek için bypass
+        lr.with_context(skip_perfect_fit_invalidate=True).sudo().write({
+            'gib_fatura_ids': [(6, 0, [fatura.id])],
+            'gib_fatura_count': 1,
+            'gib_fatura_no': fatura.invoice_id,
+            'gib_fatura_tarihi': fatura.issue_date,
+            'gib_fatura_tutari': fatura.payable_amount_try or 0.0,
+            'gib_kimlik': diffs['gib_kimlik'] or False,
+            'gib_kaynak': fatura.kaynak,
+            'tutar_farki_var': diffs['tutar_farki_var'],
+            'tutar_farki': -diffs['tutar_farki'],  # ters perspektif: logo - gib
+            'kimlik_farkli': diffs['kimlik_farkli'],
+            'fatura_tarihi_farkli': diffs['fatura_tarihi_farkli'],
+            'yon_farkli': diffs['yon_farkli'],
+            'gib_notes': False,
+        })
 
     @api.model
     def _match_logo_invoices(self, date_from, date_to, company_ids):
@@ -1852,10 +1901,12 @@ class GuvenFatura(models.Model):
                 'fatura_tarihi_farkli': 0, 'yon_farkli': 0,
             }
 
-        # 2. Logo kayıtlarını ±30 gün tarih filtresiyle yükle
+        # 2. Logo kayıtlarını ±30 gün tarih filtresiyle yükle (perfect Logo'lar
+        # başka GİB'lere aday olmasın diye perfect_fit filter)
         buffer_days = timedelta(days=30)
         logo_recs = self.env['guven.logo.fatura'].search([
             ('company_id', 'in', company_ids),
+            ('perfect_fit', '=', False),
             '|',
             '&', ('fatura_tarihi_1', '>=', date_from - buffer_days),
                  ('fatura_tarihi_1', '<=', date_to + buffer_days),
@@ -1944,7 +1995,21 @@ class GuvenFatura(models.Model):
                 self._process_single_match(fatura, matches[0], stats)
 
             else:
-                # Birden fazla eşleşme — VKN ile daraltmayı dene
+                # Birden fazla eşleşme — önce perfect-aday var mı bak (4 kriter eşit)
+                # Tek perfect aday varsa onu single-match perfect olarak ayır.
+                # Birden fazla perfect aday varsa tutucu davran (multi-match flow'una düş).
+                perfect_candidates = [
+                    lr for lr in matches
+                    if self._is_perfect_match(
+                        self._compute_match_diffs(fatura, lr, self.env)
+                    )
+                ]
+                if len(perfect_candidates) == 1:
+                    stats['matched_single'] += 1
+                    self._process_single_match(fatura, perfect_candidates[0], stats)
+                    continue
+
+                # Perfect ayıklama yapılamadı — VKN/kimlik ile daraltmayı dene
                 gib_vkn = ''
                 if fatura.direction == 'IN':
                     gib_vkn = (fatura.sender or '').strip()
