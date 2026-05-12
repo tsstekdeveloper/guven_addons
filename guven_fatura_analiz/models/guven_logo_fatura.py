@@ -853,23 +853,24 @@ class GuvenLogoFatura(models.Model):
                 func()
                 self.env.cr.commit()
                 return True
-            except psycopg2.errors.SerializationFailure:
+            except (psycopg2.errors.SerializationFailure,
+                    psycopg2.errors.DeadlockDetected) as exc:
                 self.env.cr.rollback()
                 self.env.invalidate_all()
+                err_name = type(exc).__name__
                 if attempt < max_attempts:
                     backoff = 0.5 * (2 ** (attempt - 1))
                     _logger.warning(
-                        "[GUVEN-LOGO] %s: %s concurrent update "
-                        "(deneme %d/%d), %.1f sn bekleyip tekrar deneniyor",
-                        company_name, step_name, attempt, max_attempts,
-                        backoff,
+                        "[GUVEN-LOGO] %s: %s %s (deneme %d/%d), "
+                        "%.1f sn bekleyip tekrar deneniyor",
+                        company_name, step_name, err_name,
+                        attempt, max_attempts, backoff,
                     )
                     time.sleep(backoff)
                     continue
                 _logger.error(
-                    "[GUVEN-LOGO] %s: %s %d denemede çözülemedi "
-                    "(SerializationFailure)",
-                    company_name, step_name, max_attempts,
+                    "[GUVEN-LOGO] %s: %s %d denemede çözülemedi (%s)",
+                    company_name, step_name, max_attempts, err_name,
                 )
                 return False
             except Exception:
