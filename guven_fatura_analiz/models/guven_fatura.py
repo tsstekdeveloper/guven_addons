@@ -22,6 +22,7 @@ _logger = logging.getLogger(__name__)
 PROFILE_ID_SELECTION = [
     ('TEMELFATURA', 'Temel Fatura'),
     ('TICARIFATURA', 'Ticari Fatura'),
+    ('IHRACAT', 'İhracat (Profil)'),
     ('IHRACATFATURA', 'İhracat Faturası'),
     ('YOLCUBERABERFATURA', 'Yolcu Beraberi (tax-free)'),
     ('EARSIVFATURA', 'E-Arşiv Faturası'),
