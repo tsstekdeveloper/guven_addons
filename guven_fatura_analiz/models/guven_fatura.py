@@ -217,7 +217,7 @@ class GuvenFatura(models.Model):
         'Bu fatura zaten mevcut (aynı UUID, kaynak ve şirket).',
     )
 
-    # --- Write Override (Kilit Koruması) ---
+    # --- Write Override (Kilit Koruması + Perfect-Fit Invalidasyonu) ---
 
     def write(self, vals):
         lock_fields = {'is_locked', 'locked_by_id', 'locked_date', 'lock_reason'}
@@ -230,6 +230,18 @@ class GuvenFatura(models.Model):
                       "Önce kayıtların kilidini kaldırın.")
                     % (len(locked), ', '.join(locked.mapped('invoice_id')))
                 )
+
+        # Symmetric perfect_fit invalidasyonu: gerçek bir alan update'i varsa
+        # (perfect_fit dışında), bağlı Logo kayıtlarının perfect_fit'ini de
+        # False yap; self için vals'a ekle. Recursion: vals == {'perfect_fit'}
+        # ise invalidate False kalır → karşı tarafa yazılan {'perfect_fit': False}
+        # tekrar zincire girmez.
+        if set(vals.keys()) - {'perfect_fit'}:
+            related = self.mapped('logo_fatura_ids')
+            if related:
+                related.sudo().write({'perfect_fit': False})
+            vals.setdefault('perfect_fit', False)
+
         return super().write(vals)
 
     # --- Kilitleme Aksiyonları ---
@@ -318,16 +330,20 @@ class GuvenFatura(models.Model):
             record.is_muhasebe_yoneticisi = is_yonetici
 
     @api.depends(
+        'logo_fatura_count',
         'tutar_farki_var', 'kimlik_farkli',
         'fatura_tarihi_farkli', 'yon_farkli',
     )
     def _compute_perfect_fit(self):
         for rec in self:
-            rec.perfect_fit = not (
-                rec.tutar_farki_var
-                or rec.kimlik_farkli
-                or rec.fatura_tarihi_farkli
-                or rec.yon_farkli
+            rec.perfect_fit = (
+                rec.logo_fatura_count == 1
+                and not (
+                    rec.tutar_farki_var
+                    or rec.kimlik_farkli
+                    or rec.fatura_tarihi_farkli
+                    or rec.yon_farkli
+                )
             )
 
     @api.depends(
@@ -1763,7 +1779,7 @@ class GuvenFatura(models.Model):
             (logo_vkn and gib_kimlik == logo_vkn)
             or (logo_tckn and gib_kimlik == logo_tckn)
         )
-        kimlik_farkli = bool(gib_kimlik and (logo_vkn or logo_tckn) and not kimlik_eslesti)
+        kimlik_farkli = bool(gib_kimlik) and not kimlik_eslesti
 
         # Tarih farkı
         logo_tarihi = lr.fatura_tarihi_1 or lr.fatura_tarihi_2
@@ -1819,12 +1835,15 @@ class GuvenFatura(models.Model):
             date_to: Bitiş tarihi (fields.Date)
             company_ids: list of int — eşleştirilecek şirket ID'leri
         """
-        # 1. İlgili guven.fatura kayıtlarını al
+        # 1. İlgili guven.fatura kayıtlarını al (perfect_fit=True olanlar atlanır;
+        # write override karşı taraftaki bir değişiklik olduğunda perfect_fit'i
+        # False'a çekerek bu filtre dışına çıkarır)
         faturas = self.search([
             ('issue_date', '>=', date_from),
             ('issue_date', '<=', date_to),
             ('gvn_active', '=', True),
             ('company_id', 'in', company_ids),
+            ('perfect_fit', '=', False),
         ])
         if not faturas:
             return {
@@ -1981,9 +2000,7 @@ class GuvenFatura(models.Model):
                         (ref_vkn and gib_vkn == ref_vkn)
                         or (ref_tckn and gib_vkn == ref_tckn)
                     )
-                    m_kimlik_farkli = bool(
-                        gib_vkn and (ref_vkn or ref_tckn) and not kimlik_eslesti
-                    )
+                    m_kimlik_farkli = bool(gib_vkn) and not kimlik_eslesti
 
                     ref_direction = LogoFatura._TRCODE_DIRECTION.get(ref.fatura_tipi)
                     m_yon_farkli = bool(
