@@ -1696,6 +1696,16 @@ class GuvenFatura(models.Model):
                 cursor = company.efatura_sync_cursor_date
                 if not cursor or (last_completed and last_completed < today):
                     cursor = min_start
+                    # Reset state'ini DB'ye yansıt — aynı gün içinde sonraki tetikler
+                    # last_completed=eski_today görüp tekrar reset etmesin (kısır döngü önleme).
+                    # last_completed=NULL ise ilk çalışma; DB write gerekmez.
+                    if last_completed:
+                        company.sudo().write({
+                            'efatura_sync_cursor_date': cursor,
+                            'efatura_sync_last_completed_date': False,
+                        })
+                        self.env.cr.commit()
+                        last_completed = False
 
                 # Cursor zaten bugüne ulaştıysa turu tamamla
                 if cursor >= today:
