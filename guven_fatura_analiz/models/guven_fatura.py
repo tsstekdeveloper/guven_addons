@@ -1694,18 +1694,12 @@ class GuvenFatura(models.Model):
 
                 # Cursor'ı belirle: ilk çalışma veya yeni gün → lookback başına reset
                 cursor = company.efatura_sync_cursor_date
+                was_reset = False
                 if not cursor or (last_completed and last_completed < today):
                     cursor = min_start
-                    # Reset state'ini DB'ye yansıt — aynı gün içinde sonraki tetikler
-                    # last_completed=eski_today görüp tekrar reset etmesin (kısır döngü önleme).
-                    # last_completed=NULL ise ilk çalışma; DB write gerekmez.
-                    if last_completed:
-                        company.sudo().write({
-                            'efatura_sync_cursor_date': cursor,
-                            'efatura_sync_last_completed_date': False,
-                        })
-                        self.env.cr.commit()
-                        last_completed = False
+                    # Reset olduğunu işaretle; aşağıda cursor ilerletme write'ında
+                    # last_completed=NULL yazılacak (kısır döngü önleme — race-free).
+                    was_reset = bool(last_completed)
 
                 # Cursor zaten bugüne ulaştıysa turu tamamla
                 if cursor >= today:
@@ -1738,6 +1732,11 @@ class GuvenFatura(models.Model):
                     write_vals = {'efatura_sync_cursor_date': next_cursor}
                     if next_cursor >= today:
                         write_vals['efatura_sync_last_completed_date'] = today
+                    elif was_reset:
+                        # Bu tetikte yeni gün için reset yapıldı; last_completed'i de
+                        # NULL'a çek ki sonraki tetikler aynı gün içinde tekrar reset
+                        # etmesin (kısır döngü önleme — race-free, mevcut write ile birlikte).
+                        write_vals['efatura_sync_last_completed_date'] = False
                     company.sudo().write(write_vals)
                     # Blok sonrası commit (şirketler arası izolasyon)
                     self.env.cr.commit()

@@ -927,18 +927,12 @@ class GuvenLogoFatura(models.Model):
 
                 # Cursor'ı belirle: ilk çalışma veya yeni gün → lookback başına reset
                 cursor_date = company.logo_sync_cursor_date
+                was_reset = False
                 if not cursor_date or (last_completed and last_completed < today):
                     cursor_date = min_start
-                    # Reset state'ini DB'ye yansıt — aynı gün içinde sonraki tetikler
-                    # last_completed=eski_today görüp tekrar reset etmesin (kısır döngü önleme).
-                    # last_completed=NULL ise ilk çalışma; DB write gerekmez.
-                    if last_completed:
-                        company.sudo().write({
-                            'logo_sync_cursor_date': cursor_date,
-                            'logo_sync_last_completed_date': False,
-                        })
-                        self.env.cr.commit()
-                        last_completed = False
+                    # Reset olduğunu işaretle; aşağıda cursor ilerletme write'ında
+                    # last_completed=NULL yazılacak (kısır döngü önleme — race-free).
+                    was_reset = bool(last_completed)
 
                 # Cursor zaten bugüne ulaştıysa turu tamamla
                 if cursor_date >= today:
@@ -1010,6 +1004,11 @@ class GuvenLogoFatura(models.Model):
                     write_vals = {'logo_sync_cursor_date': next_cursor}
                     if next_cursor >= today:
                         write_vals['logo_sync_last_completed_date'] = today
+                    elif was_reset:
+                        # Bu tetikte yeni gün için reset yapıldı; last_completed'i de
+                        # NULL'a çek ki sonraki tetikler aynı gün içinde tekrar reset
+                        # etmesin (kısır döngü önleme — race-free, mevcut write ile birlikte).
+                        write_vals['logo_sync_last_completed_date'] = False
                     company.sudo().write(write_vals)
                     self.env.cr.commit()
                 except Exception:
