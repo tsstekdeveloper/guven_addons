@@ -26,6 +26,18 @@ class ResCompany(models.Model):
         for record in self:
             record.can_edit_fatura_settings = can_edit
 
+    is_muhasebe_yoneticisi = fields.Boolean(
+        compute='_compute_is_muhasebe_yoneticisi',
+    )
+
+    @api.depends_context('uid')
+    def _compute_is_muhasebe_yoneticisi(self):
+        is_y = self.env.user.has_group(
+            'guven_fatura_analiz.group_muhasebe_yoneticisi'
+        )
+        for record in self:
+            record.is_muhasebe_yoneticisi = is_y
+
     # ==================================================================
     # E-FATURA SOAP FIELDS
     # ==================================================================

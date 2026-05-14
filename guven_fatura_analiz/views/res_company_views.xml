@@ -42,10 +42,18 @@
                 <!-- NEW TABS: SOAP & MSSQL SETTINGS              -->
                 <!-- ============================================ -->
 
-                <!-- Computed field for group-based editability -->
+                <!-- Computed fields for group-based editability -->
                 <div class="oe_button_box" name="button_box" position="before">
                     <field name="can_edit_fatura_settings" invisible="1"/>
+                    <field name="is_muhasebe_yoneticisi" invisible="1"/>
                 </div>
+
+                <!-- Tüm form'u Muhasebe Yöneticisi grubu dışı için readonly yap.
+                     Sheet container readonly olunca içindeki tüm widget'lar otomatik
+                     readonly olur (standart Odoo davranışı). -->
+                <sheet position="attributes">
+                    <attribute name="readonly">not is_muhasebe_yoneticisi</attribute>
+                </sheet>
 
                 <page name="general_info" position="after">
 
