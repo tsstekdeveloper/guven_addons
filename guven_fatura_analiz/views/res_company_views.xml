@@ -52,7 +52,7 @@
                     <!-- E-Fatura SOAP Settings Tab -->
                     <page string="E-Fatura SOAP Ayarları"
                           name="efatura_soap"
-                          groups="guven_fatura_analiz.group_muhasebe_calisani">
+                          groups="base.group_system">
                         <group string="SOAP Bağlantı Bilgileri">
                             <group>
                                 <field name="efatura_username"
@@ -91,7 +91,7 @@
                     <!-- Logo MSSQL Settings Tab -->
                     <page string="Logo MSSQL Ayarları"
                           name="logo_mssql"
-                          groups="guven_fatura_analiz.group_muhasebe_calisani">
+                          groups="base.group_system">
                         <notebook>
 
                             <!-- Nested Tab 1: Bağlantı Ayarları -->
