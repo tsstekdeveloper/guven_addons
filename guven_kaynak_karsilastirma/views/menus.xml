@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_kaynak_karsilastirma"
+              name="Kaynak Sistem Karşılaştırması"
+              parent="guven_fatura_analiz.menu_fatura_analiz_faturalar"
+              action="action_guven_kaynak_karsilastirma"
+              sequence="9"
+              groups="guven_fatura_analiz.group_muhasebe_calisani"/>
+
+    <menuitem id="menu_kaynak_source"
+              name="Kaynak Sistem Bağlantıları"
+              parent="guven_fatura_analiz.menu_fatura_analiz_veri_guncelleme"
+              action="action_guven_kaynak_source"
+              sequence="50"
+              groups="base.group_system"/>
+</odoo>

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_guven_kaynak_karsilastirma_list" model="ir.ui.view">
+        <field name="name">guven.kaynak.karsilastirma.list</field>
+        <field name="model">guven.kaynak.karsilastirma</field>
+        <field name="arch" type="xml">
+            <list string="Kaynak Sistem Karşılaştırması" create="0" edit="0" delete="0"
+                  decoration-danger="overall_status == 'missing'"
+                  decoration-warning="overall_status in ('multiple', 'date_mismatch', 'invalid', 'both')"
+                  decoration-muted="overall_status == 'unchecked'">
+                <field name="issue_date"/>
+                <field name="invoice_number"/>
+                <field name="company_id" optional="show"/>
+                <field name="direction"/>
+                <field name="gib_source" optional="show"/>
+                <field name="counterparty_name" optional="hide"/>
+                <field name="amount_try" sum="Toplam" optional="show"/>
+                <field name="overall_status" widget="badge"
+                       decoration-success="overall_status in ('pusula', 'cerebrum')"
+                       decoration-danger="overall_status == 'missing'"
+                       decoration-warning="overall_status in ('multiple', 'date_mismatch', 'invalid', 'both')"/>
+                <field name="pusula_status" optional="show"/>
+                <field name="pusula_number" optional="hide"/>
+                <field name="pusula_type" optional="hide"/>
+                <field name="pusula_amount_diff" optional="show"/>
+                <field name="pusula_amount_level" optional="hide"/>
+                <field name="pusula_ettn_match" optional="hide"/>
+                <field name="cerebrum_status" optional="show"/>
+                <field name="cerebrum_number" optional="hide"/>
+                <field name="cerebrum_type" optional="hide"/>
+                <field name="cerebrum_amount_diff" optional="show"/>
+                <field name="cerebrum_amount_level" optional="hide"/>
+                <field name="logo_match_count" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_guven_kaynak_karsilastirma_form" model="ir.ui.view">
+        <field name="name">guven.kaynak.karsilastirma.form</field>
+        <field name="model">guven.kaynak.karsilastirma</field>
+        <field name="arch" type="xml">
+            <form string="Kaynak Sistem Karşılaştırması" create="0" edit="0" delete="0">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="invoice_number" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="izibiz">
+                            <field name="fatura_id"/>
+                            <field name="company_id"/>
+                            <field name="direction"/>
+                            <field name="gib_source"/>
+                            <field name="issue_date"/>
+                            <field name="counterparty_name"/>
+                            <field name="counterparty_vkn" invisible="direction != 'IN'"/>
+                            <field name="amount_try"/>
+                            <field name="payable_amount_try"/>
+                            <field name="logo_match_count"/>
+                        </group>
+                        <group string="Sonuç">
+                            <field name="overall_status" widget="badge"/>
+                            <field name="evaluated_at"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Pusula">
+                            <field name="pusula_status"/>
+                            <field name="pusula_candidate_count"/>
+                            <field name="pusula_record_id" invisible="not pusula_record_id"/>
+                            <field name="pusula_number"/>
+                            <field name="pusula_date"/>
+                            <field name="pusula_type"/>
+                            <field name="pusula_unit" invisible="not pusula_record_id"/>
+                            <field name="pusula_amount"/>
+                            <field name="pusula_amount_diff"/>
+                            <field name="pusula_amount_level"/>
+                            <field name="pusula_amount_basis"/>
+                            <field name="pusula_vkn"/>
+                            <field name="pusula_identity_match"/>
+                            <field name="pusula_ettn_match"/>
+                            <field name="pusula_invalid_reason" invisible="not pusula_invalid_reason"/>
+                            <field name="pusula_document_kind" invisible="not pusula_document_kind"/>
+                            <field name="pusula_other_company" invisible="not pusula_other_company"/>
+                            <field name="pusula_candidates_note" invisible="not pusula_candidates_note"/>
+                        </group>
+                        <group string="Cerebrum">
+                            <field name="cerebrum_status"/>
+                            <field name="cerebrum_candidate_count"/>
+                            <field name="cerebrum_record_id" invisible="not cerebrum_record_id"/>
+                            <field name="cerebrum_number"/>
+                            <field name="cerebrum_date"/>
+                            <field name="cerebrum_type"/>
+                            <field name="cerebrum_unit" invisible="not cerebrum_record_id"/>
+                            <field name="cerebrum_amount"/>
+                            <field name="cerebrum_amount_diff"/>
+                            <field name="cerebrum_amount_level"/>
+                            <field name="cerebrum_amount_basis"/>
+                            <field name="cerebrum_vkn"/>
+                            <field name="cerebrum_identity_match"/>
+                            <field name="cerebrum_invalid_reason" invisible="not cerebrum_invalid_reason"/>
+                            <field name="cerebrum_other_company" invisible="not cerebrum_other_company"/>
+                            <field name="cerebrum_candidates_note" invisible="not cerebrum_candidates_note"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_guven_kaynak_karsilastirma_search" model="ir.ui.view">
+        <field name="name">guven.kaynak.karsilastirma.search</field>
+        <field name="model">guven.kaynak.karsilastirma</field>
+        <field name="arch" type="xml">
+            <search string="Kaynak Sistem Karşılaştırması">
+                <field name="invoice_number"/>
+                <field name="pusula_number"/>
+                <field name="cerebrum_number"/>
+                <field name="company_id"/>
+                <filter name="found" string="Bulundu" domain="[('overall_status', 'in', ['pusula', 'cerebrum'])]"/>
+                <filter name="missing" string="Yok" domain="[('overall_status', '=', 'missing')]"/>
+                <filter name="review" string="İncelenecek"
+                        domain="[('overall_status', 'in', ['multiple', 'date_mismatch', 'invalid', 'both'])]"/>
+                <filter name="unchecked" string="Kontrol Edilemedi" domain="[('overall_status', '=', 'unchecked')]"/>
+                <separator/>
+                <filter name="amount_different" string="Tutar Farklı"
+                        domain="['|', ('pusula_amount_level', '=', 'different'), ('cerebrum_amount_level', '=', 'different')]"/>
+                <filter name="ettn_mismatch" string="ETTN Farklı" domain="[('pusula_ettn_match', '=', 'mismatch')]"/>
+                <filter name="identity_mismatch" string="Kimlik Farklı"
+                        domain="['|', ('pusula_identity_match', '=', 'mismatch'), ('cerebrum_identity_match', '=', 'mismatch')]"/>
+                <filter name="other_company" string="Başka Şirkette Var"
+                        domain="['|', ('pusula_other_company', '=', True), ('cerebrum_other_company', '=', True)]"/>
+                <filter name="logo_matched" string="Logo'da Var" domain="[('logo_match_count', '>', 0)]"/>
+                <separator/>
+                <filter name="incoming" string="Gelen" domain="[('direction', '=', 'IN')]"/>
+                <filter name="outgoing" string="Giden" domain="[('direction', '=', 'OUT')]"/>
+                <separator/>
+                <filter name="issue_date" string="Fatura Tarihi" date="issue_date"/>
+                <group>
+                    <filter name="group_overall_status" string="Genel Durum" context="{'group_by': 'overall_status'}"/>
+                    <filter name="group_company" string="Şirket" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_direction" string="Yön" context="{'group_by': 'direction'}"/>
+                    <filter name="group_pusula_status" string="Pusula Durumu" context="{'group_by': 'pusula_status'}"/>
+                    <filter name="group_cerebrum_status" string="Cerebrum Durumu" context="{'group_by': 'cerebrum_status'}"/>
+                    <filter name="group_month" string="Ay" context="{'group_by': 'issue_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_guven_kaynak_karsilastirma" model="ir.actions.act_window">
+        <field name="name">Kaynak Sistem Karşılaştırması</field>
+        <field name="res_model">guven.kaynak.karsilastirma</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_guven_kaynak_karsilastirma_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Henüz karşılaştırma yok</p>
+            <p>Kaynak sistem bağlantıları ve şirket eşlemeleri tanımlanıp bir tur çalıştırıldığında
+                geçerli izibiz faturaları burada Pusula ve Cerebrum sonuçlarıyla görünür.</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_guven_kaynak_karsilastirma_calisani,guven.kaynak.karsilastirma.calisani,model_guven_kaynak_karsilastirma,guven_fatura_analiz.group_muhasebe_calisani,1,0,0,0
+access_guven_kaynak_karsilastirma_system,guven.kaynak.karsilastirma.system,model_guven_kaynak_karsilastirma,base.group_system,1,1,1,1
+access_guven_kaynak_source_system,guven.kaynak.source.system,model_guven_kaynak_source,base.group_system,1,1,1,1

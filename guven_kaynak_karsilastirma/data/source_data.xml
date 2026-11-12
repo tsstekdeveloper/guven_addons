@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Credentials are entered by an administrator; only the endpoints ship. -->
+    <data noupdate="1">
+        <record id="source_pusula" model="guven.kaynak.source">
+            <field name="name">Pusula HBYS</field>
+            <field name="system">pusula</field>
+            <field name="host">AG_GVN.guven.local</field>
+            <field name="port">5123</field>
+            <field name="database">PusulaHBYS</field>
+        </record>
+
+        <record id="source_cerebrum" model="guven.kaynak.source">
+            <field name="name">Cerebrum</field>
+            <field name="system">cerebrum</field>
+            <field name="host">172.1.11.23</field>
+            <field name="port">1521</field>
+            <field name="database">GVN</field>
+        </record>
+
+        <record id="param_start_date" model="ir.config_parameter">
+            <field name="key">guven_kaynak_karsilastirma.start_date</field>
+            <field name="value">2026-01-01</field>
+        </record>
+    </data>
+</odoo>
