@@ -3,7 +3,7 @@
     <data noupdate="1">
         <!-- Ships inactive: enable after the first manual tour has been checked. -->
         <record id="ir_cron_kaynak_karsilastirma" model="ir.cron">
-            <field name="name">Kaynak Sistem Karşılaştırması (Pusula + Cerebrum)</field>
+            <field name="name">HBYS Sistemleri Karşılaştırması (Pusula + Cerebrum)</field>
             <field name="model_id" ref="model_guven_kaynak_karsilastirma"/>
             <field name="state">code</field>
             <field name="code">model._cron_run()</field>

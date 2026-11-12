@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_kaynak_karsilastirma"
-              name="Kaynak Sistem Karşılaştırması"
+              name="HBYS Sistemleri Karşılaştırması"
               parent="guven_fatura_analiz.menu_fatura_analiz_faturalar"
               action="action_guven_kaynak_karsilastirma"
               sequence="9"

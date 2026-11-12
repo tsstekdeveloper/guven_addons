@@ -100,7 +100,7 @@ def _month_start(date):
 
 class GuvenKaynakKarsilastirma(models.Model):
     _name = 'guven.kaynak.karsilastirma'
-    _description = 'Kaynak Sistem Karşılaştırması'
+    _description = 'HBYS Sistemleri Karşılaştırması'
     _order = 'issue_date desc, id desc'
     _rec_name = 'invoice_number'
 
