@@ -18,19 +18,31 @@ SELECT FT.Id, FT.FaturaTipiId, FT.FaturaEvrakTipiId, FT.State, FT.SubeId,
             THEN COALESCE(NULLIF(LTRIM(RTRIM(FT.VergiNo)), N''), CR.VergiNo,
                           CAST(CR.TcKimlikNo AS nvarchar(20)))
        END,
-       CAST(FT.UUID AS nvarchar(50)), FT.ParaBirimiId, FT.DovizKuru
+       CAST(FT.UUID AS nvarchar(50)), FT.ParaBirimiId
 FROM Finans.Fatura FT WITH (NOLOCK)
 LEFT JOIN Finans.Cari CR WITH (NOLOCK) ON CR.Id = FT.CariId
 WHERE FT.MatbuFaturaNo IN ({placeholders})
 """
 
+# Line totals of foreign-currency invoices only (IX_FaturaKalem_FaturaId).
+_SELECT_LINE_TOTALS = """
+SELECT K.FaturaId, SUM(K.KdvliTutar), SUM(K.KdvliTutarDoviz), COUNT(*)
+FROM Finans.FaturaKalem K WITH (NOLOCK)
+WHERE K.FaturaId IN ({placeholders}) AND K.State <> 0
+GROUP BY K.FaturaId
+"""
+
 PROVISION_TYPE = 9
 
-# Pusula.ParaBirimi. On foreign-currency invoices ToplamKdvliTutar is in the
-# document currency while the FaturaKalem lines carry TL; the header rate
-# (DovizKuru) converts it. Found on 2026-11-13: 8,936 USD/EUR patient
-# invoices looked ~98 % short before the conversion. Row 24 is labelled
-# "TRY" but named "Avustralya Doları", so only 1 is treated as TL.
+# Pusula.ParaBirimi. On a foreign-currency invoice the header total is not
+# reliably TL (measured on prod 2026-11-13):
+# - type 8 patient invoices: ToplamKdvliTutar is in the document currency,
+#   the FaturaKalem lines carry TL (KdvliTutar) and the currency amount
+#   (KdvliTutarDoviz); the TL line sum matched GİB within 0.3 TL.
+# - type 13 institution invoices: no lines of their own (they sit on the
+#   type 9 children) and ToplamKdvliTutar is already TL.
+# So the TL amount is the line sum when lines exist, else the header.
+# Row 24 is labelled "TRY" but named "Avustralya Doları"; only 1 is TL.
 TL_CURRENCY_ID = 1
 CURRENCY_CODES = {
     2: 'USD', 3: 'EUR', 4: 'CAD', 5: 'GBP', 6: 'JPY', 7: 'SAR', 10: 'AUD', 11: 'DKK',
@@ -99,17 +111,26 @@ class PusulaClient:
                 batch = wanted[start:start + self.BATCH_SIZE]
                 sql = _SELECT_BY_NUMBERS.format(placeholders=', '.join(['%s'] * len(batch)))
                 cursor.execute(sql, tuple(batch))
-                for row in cursor.fetchall():
-                    record = self._to_record(row)
+                rows = cursor.fetchall()
+                foreign = sorted({row[0] for row in rows
+                                  if row[10] not in (None, TL_CURRENCY_ID) and row[1] != PROVISION_TYPE})
+                lines = {}
+                if foreign:
+                    sql = _SELECT_LINE_TOTALS.format(placeholders=', '.join(['%s'] * len(foreign)))
+                    cursor.execute(sql, tuple(foreign))
+                    lines = {row[0]: row[1:] for row in cursor.fetchall()}
+                for row in rows:
+                    record = self._to_record(row, lines.get(row[0]))
                     if record is not None:
                         records.append(record)
         finally:
             cursor.close()
         return records
 
-    def _to_record(self, row):
+    def _to_record(self, row, lines=None):
+        """`lines`: (TL sum, currency sum, count) of a foreign-currency invoice."""
         (record_id, type_id, document_kind, state, unit_id, number,
-         date, amount, identity, ettn, currency_id, rate) = row
+         date, amount, identity, ettn, currency_id) = row
         if type_id == PROVISION_TYPE:
             return None
         direction = matching.PUSULA_DIRECTION.get(type_id)
@@ -124,9 +145,11 @@ class PusulaClient:
         amount_try = float(amount) if amount is not None else None
         if currency_id not in (None, TL_CURRENCY_ID):
             currency = CURRENCY_CODES.get(currency_id, 'PB%s' % currency_id)
-            amount_currency = amount_try
-            # Without a rate the TL amount is unknown: no amount validation.
-            amount_try = round(amount_currency * float(rate), 2) if amount_currency is not None and rate else None
+            if lines and lines[2]:
+                tl_sum, currency_sum = lines[0], lines[1]
+                amount_try = round(float(tl_sum), 2) if tl_sum is not None else None
+                amount_currency = round(float(currency_sum), 2) if currency_sum is not None else None
+            # Without lines the header is already TL and stays as read.
         return matching.SourceRecord(
             system=matching.PUSULA,
             record_id=record_id,

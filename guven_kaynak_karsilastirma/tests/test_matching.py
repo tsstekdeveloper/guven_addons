@@ -105,7 +105,7 @@ class TestRowMapping(BaseCase):
 
     def test_pusula_rows(self):
         client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
-        tl = (1, 1.0)  # ParaBirimiId, DovizKuru
+        tl = (1,)  # ParaBirimiId
         self.assertEqual(client._to_record((10, 13, 1, 1, 1, "GVN1", D, 118.0, None, "u-1") + tl).direction, m.OUT)
         self.assertIsNone(client._to_record((11, 9, 1, 1, 1, "GVN1", D, 1.0, None, "u") + tl))
         self.assertIsNone(client._to_record((12, 99, 1, 1, 1, "X", D, 1.0, None, None) + tl))
@@ -114,16 +114,18 @@ class TestRowMapping(BaseCase):
         self.assertEqual(client._to_record((14, 4, 2, 1, 1, "X", D, 1.0, None, None) + tl).invalid_reason, "receipt")
         self.assertTrue(client._to_record((15, 4, 4, 1, 1, "X", D, 1.0, None, None) + tl).is_valid)
 
-    def test_pusula_foreign_currency_header_is_converted(self):
-        # Real case G512026000107313: header 55,406.85 USD at 46.2307, GİB 2,561,497.46 TL.
+    def test_pusula_foreign_currency_uses_line_totals(self):
         client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
-        usd = client._to_record((20, 8, 1, 1, 1, "G51", D, 55406.85, None, "u", 2, 46.2307))
-        self.assertEqual((usd.currency, usd.amount_currency, usd.amount_try), ('USD', 55406.85, 2561497.46))
-        tl = client._to_record((21, 8, 1, 1, 1, "G52", D, 118.0, None, "u", 1, 1.0))
+        # Type 8, real case G512026000169656: header 36,282.93 is USD, the
+        # lines carry TL 1,774,264.17 (GİB 1,774,264.30 TL).
+        usd = client._to_record((20, 8, 1, 1, 1, "G51", D, 36282.93, None, "u", 2), (1774264.17, 36282.93, 1145))
+        self.assertEqual((usd.currency, usd.amount_currency, usd.amount_try), ('USD', 36282.93, 1774264.17))
+        # Type 13, real case G512026000152899: no lines, header already TL.
+        eur = client._to_record((21, 13, 1, 1, 1, "G52", D, 2566562.35, None, "u", 3), None)
+        self.assertEqual((eur.currency, eur.amount_currency, eur.amount_try), ('EUR', None, 2566562.35))
+        tl = client._to_record((22, 8, 1, 1, 1, "G53", D, 118.0, None, "u", 1), None)
         self.assertEqual((tl.currency, tl.amount_currency, tl.amount_try), (None, None, 118.0))
-        no_rate = client._to_record((22, 8, 1, 1, 1, "G53", D, 10.0, None, "u", 3, None))
-        self.assertEqual((no_rate.currency, no_rate.amount_try), ('EUR', None))
-        self.assertEqual(client._to_record((23, 8, 1, 1, 1, "G54", D, 10.0, None, "u", 99, 2.0)).currency, 'PB99')
+        self.assertEqual(client._to_record((23, 8, 1, 1, 1, "G54", D, 10.0, None, "u", 99), None).currency, 'PB99')
 
     def test_cerebrum_rows(self):
         to = cerebrum_client.CerebrumClient._to_record
