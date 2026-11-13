@@ -107,6 +107,7 @@ class SourceRecord:
     document_kind: int = None
     currency: str = None              # set only for non-TL documents
     amount_currency: float = None     # document-currency amount behind amount_try
+    amount_payable_try: float = None  # after withholding, when the source knows it
 
     @property
     def is_valid(self):
@@ -196,11 +197,13 @@ def judge(invoice, index, scope_units):
             # Cerebrum stores the payable amount on withholding invoices (44 of
             # 46 incoming differences in the October 2026 dry run), so the
             # closer of the two GİB totals is the comparison basis.
+            # Pusula derives a payable amount itself when the header carries a
+            # withholding rate (type 4 sales returns).
             options = [
-                (round(record.amount_try - total, 2), basis)
-                for total, basis in ((invoice.amount_try, 'inclusive'),
-                                     (invoice.payable_amount_try, 'payable'))
-                if total is not None
+                (round(ours - total, 2), 'inclusive' if ours_basis == gib_basis == 'inclusive' else 'payable')
+                for ours, ours_basis in ((record.amount_try, 'inclusive'), (record.amount_payable_try, 'payable'))
+                for total, gib_basis in ((invoice.amount_try, 'inclusive'), (invoice.payable_amount_try, 'payable'))
+                if ours is not None and total is not None
             ]
             if options:
                 amount_diff, amount_basis = min(options, key=lambda o: abs(o[0]))

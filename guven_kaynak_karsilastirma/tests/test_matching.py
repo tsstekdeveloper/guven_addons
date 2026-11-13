@@ -105,7 +105,7 @@ class TestRowMapping(BaseCase):
 
     def test_pusula_rows(self):
         client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
-        tl = (1,)  # ParaBirimiId
+        tl = (1, None, None, None, None)  # ParaBirimiId, KDV-hariç, KDV, tevkifat pay/payda
         self.assertEqual(client._to_record((10, 13, 1, 1, 1, "GVN1", D, 118.0, None, "u-1") + tl).direction, m.OUT)
         self.assertIsNone(client._to_record((11, 9, 1, 1, 1, "GVN1", D, 1.0, None, "u") + tl))
         self.assertIsNone(client._to_record((12, 99, 1, 1, 1, "X", D, 1.0, None, None) + tl))
@@ -114,18 +114,50 @@ class TestRowMapping(BaseCase):
         self.assertEqual(client._to_record((14, 4, 2, 1, 1, "X", D, 1.0, None, None) + tl).invalid_reason, "receipt")
         self.assertTrue(client._to_record((15, 4, 4, 1, 1, "X", D, 1.0, None, None) + tl).is_valid)
 
+    def _row(self, rid, type_id, amount, currency_id=1, net=None, vat=None, num=None, den=None):
+        return (rid, type_id, 1, 1, 1, "G%s" % rid, D, amount, None, "u", currency_id, net, vat, num, den)
+
     def test_pusula_foreign_currency_uses_line_totals(self):
         client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
         # Type 8, real case G512026000169656: header 36,282.93 is USD, the
         # lines carry TL 1,774,264.17 (GİB 1,774,264.30 TL).
-        usd = client._to_record((20, 8, 1, 1, 1, "G51", D, 36282.93, None, "u", 2), (1774264.17, 36282.93, 1145))
+        usd = client._to_record(self._row(20, 8, 36282.93, 2), lines=(1774264.17, 36282.93, 1145))
         self.assertEqual((usd.currency, usd.amount_currency, usd.amount_try), ('USD', 36282.93, 1774264.17))
-        # Type 13, real case G512026000152899: no lines, header already TL.
-        eur = client._to_record((21, 13, 1, 1, 1, "G52", D, 2566562.35, None, "u", 3), None)
-        self.assertEqual((eur.currency, eur.amount_currency, eur.amount_try), ('EUR', None, 2566562.35))
-        tl = client._to_record((22, 8, 1, 1, 1, "G53", D, 118.0, None, "u", 1), None)
+        tl = client._to_record(self._row(22, 8, 118.0))
         self.assertEqual((tl.currency, tl.amount_currency, tl.amount_try), (None, None, 118.0))
-        self.assertEqual(client._to_record((23, 8, 1, 1, 1, "G54", D, 10.0, None, "u", 99), None).currency, 'PB99')
+        self.assertEqual(client._to_record(self._row(23, 8, 10.0, 99)).currency, 'PB99')
+
+    def test_pusula_institution_invoice_uses_children_lines(self):
+        client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
+        # Real case G022026000052192: header 14,000 (one provision), 38 children total 472,000.
+        tl = client._to_record(self._row(30, 13, 14000.0), children=(472000.0, 0.0, 38))
+        self.assertEqual((tl.amount_try, tl.currency), (472000.0, None))
+        # Foreign-currency type 13: children lines carry TL and currency.
+        eur = client._to_record(self._row(31, 13, 2566562.35, 3), children=(2566562.11, 46001.59, 12))
+        self.assertEqual((eur.amount_try, eur.currency, eur.amount_currency), (2566562.11, 'EUR', 46001.59))
+        # Own lines are ignored for type 13; no children keeps the header.
+        alone = client._to_record(self._row(32, 13, 500.0, 2), lines=(1.0, 1.0, 1), children=None)
+        self.assertEqual((alone.amount_try, alone.amount_currency), (500.0, None))
+
+    def test_pusula_withholding_gives_payable_amount(self):
+        client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
+        # Real case GNS2026000003192: 99.21 + 9.92 * (1 - 5/10) = 104.17, GİB 104.17.
+        ret = client._to_record(self._row(40, 4, 109.13, 1, 99.21, 9.92, 5.0, 10.0))
+        self.assertEqual((ret.amount_try, ret.amount_payable_try), (109.13, 104.17))
+        self.assertIsNone(client._to_record(self._row(41, 4, 109.13)).amount_payable_try)
+        # Header amounts are not TL on foreign-currency invoices: no payable.
+        self.assertIsNone(client._to_record(self._row(42, 4, 10.0, 2, 9.0, 1.0, 5.0, 10.0)).amount_payable_try)
+
+    def test_withheld_payable_matches_gib(self):
+        record = m.SourceRecord(system=m.PUSULA, record_id=1, numbers=("GNS1",), date=D, direction=m.IN, type_id=4,
+                                unit_id=1, amount_try=109.13, amount_payable_try=104.17)
+        v = m.judge(inv(number="GNS1", direction=m.IN, amount=104.17, payable=104.17), m.build_index([record]), {1})
+        self.assertEqual((m.amount_level(v), v.amount_basis, v.amount_diff), (m.AMOUNT_EXACT, 'payable', 0.0))
+        # Equal GİB totals keep the inclusive basis, so existing signatures stay put.
+        plain = m.SourceRecord(system=m.PUSULA, record_id=2, numbers=("X1",), date=D, direction=m.OUT, type_id=8,
+                               unit_id=1, amount_try=118.0)
+        v = m.judge(inv(number="X1", amount=118.0, payable=118.0), m.build_index([plain]), {1})
+        self.assertEqual(v.amount_basis, 'inclusive')
 
     def test_cerebrum_rows(self):
         to = cerebrum_client.CerebrumClient._to_record
