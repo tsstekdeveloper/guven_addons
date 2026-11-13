@@ -24,6 +24,8 @@
                 <field name="pusula_type" optional="hide"/>
                 <field name="pusula_amount_diff" optional="show"/>
                 <field name="pusula_amount_level" optional="hide"/>
+                <field name="pusula_currency" optional="hide"/>
+                <field name="pusula_amount_currency" optional="hide"/>
                 <field name="pusula_ettn_match" optional="hide"/>
                 <field name="cerebrum_status" optional="show"/>
                 <field name="cerebrum_number" optional="hide"/>
@@ -72,6 +74,8 @@
                             <field name="pusula_type"/>
                             <field name="pusula_unit" invisible="not pusula_record_id"/>
                             <field name="pusula_amount"/>
+                            <field name="pusula_currency" invisible="not pusula_currency"/>
+                            <field name="pusula_amount_currency" invisible="not pusula_currency"/>
                             <field name="pusula_amount_diff"/>
                             <field name="pusula_amount_level"/>
                             <field name="pusula_amount_basis"/>

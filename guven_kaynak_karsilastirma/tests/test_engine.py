@@ -53,11 +53,12 @@ class FakeCerebrum:
 
 
 def source_record(system, number, rid, direction=m.OUT, amount=118.0, unit=1, valid=True, date=DAY, ettn=None,
-                  identity=None):
+                  identity=None, currency=None, amount_currency=None):
     return m.SourceRecord(
         system=system, record_id=rid, numbers=(number,), date=date, direction=direction,
         type_id=8 if system == m.PUSULA else 27, unit_id=unit, amount_try=amount, identity=identity,
         ettn=ettn, invalid_reason=None if valid else 'cancelled',
+        currency=currency, amount_currency=amount_currency,
     )
 
 
@@ -195,6 +196,17 @@ class TestTourEngine(TransactionCase):
         out_row = self._row(self.out_invoice)
         self.assertEqual(out_row.pusula_status, 'missing')
         self.assertTrue(out_row.pusula_other_company)
+
+    def test_foreign_currency_columns_follow_the_source(self):
+        usd = FakePusula([source_record(m.PUSULA, 'GKT2030000000001', 101, ettn='ETTN-OUT-1',
+                                        currency='USD', amount_currency=2.55)])
+        self._run(pusula=usd)
+        row = self._row(self.out_invoice)
+        self.assertEqual((row.pusula_currency, row.pusula_amount_currency, row.pusula_amount_level),
+                         ('USD', 2.55, 'exact'))
+        # The same document turning into a TL record must clear the columns.
+        self._run()
+        self.assertEqual((row.pusula_currency, row.pusula_amount_currency), (False, 0.0))
 
     def test_full_scan_marked_done(self):
         self._run()

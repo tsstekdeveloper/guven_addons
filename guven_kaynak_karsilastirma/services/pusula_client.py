@@ -18,13 +18,25 @@ SELECT FT.Id, FT.FaturaTipiId, FT.FaturaEvrakTipiId, FT.State, FT.SubeId,
             THEN COALESCE(NULLIF(LTRIM(RTRIM(FT.VergiNo)), N''), CR.VergiNo,
                           CAST(CR.TcKimlikNo AS nvarchar(20)))
        END,
-       CAST(FT.UUID AS nvarchar(50))
+       CAST(FT.UUID AS nvarchar(50)), FT.ParaBirimiId, FT.DovizKuru
 FROM Finans.Fatura FT WITH (NOLOCK)
 LEFT JOIN Finans.Cari CR WITH (NOLOCK) ON CR.Id = FT.CariId
 WHERE FT.MatbuFaturaNo IN ({placeholders})
 """
 
 PROVISION_TYPE = 9
+
+# Pusula.ParaBirimi. On foreign-currency invoices ToplamKdvliTutar is in the
+# document currency while the FaturaKalem lines carry TL; the header rate
+# (DovizKuru) converts it. Found on 2026-11-13: 8,936 USD/EUR patient
+# invoices looked ~98 % short before the conversion. Row 24 is labelled
+# "TRY" but named "Avustralya Doları", so only 1 is treated as TL.
+TL_CURRENCY_ID = 1
+CURRENCY_CODES = {
+    2: 'USD', 3: 'EUR', 4: 'CAD', 5: 'GBP', 6: 'JPY', 7: 'SAR', 10: 'AUD', 11: 'DKK',
+    12: 'CHF', 13: 'SEK', 14: 'KWD', 15: 'NOK', 21: 'ILS', 25: 'RON', 26: 'BGN',
+    27: 'RUB', 28: 'AZN', 29: 'CNY', 30: 'PKR', 31: 'GEL',
+}
 
 
 class PusulaError(Exception):
@@ -97,7 +109,7 @@ class PusulaClient:
 
     def _to_record(self, row):
         (record_id, type_id, document_kind, state, unit_id, number,
-         date, amount, identity, ettn) = row
+         date, amount, identity, ettn, currency_id, rate) = row
         if type_id == PROVISION_TYPE:
             return None
         direction = matching.PUSULA_DIRECTION.get(type_id)
@@ -108,6 +120,13 @@ class PusulaClient:
             reason = matching.PUSULA_INVALID_DOCUMENT_KIND.get(document_kind)
         else:
             reason = matching.PUSULA_INVALID_STATE.get(state, 'unknown_state')
+        currency = amount_currency = None
+        amount_try = float(amount) if amount is not None else None
+        if currency_id not in (None, TL_CURRENCY_ID):
+            currency = CURRENCY_CODES.get(currency_id, 'PB%s' % currency_id)
+            amount_currency = amount_try
+            # Without a rate the TL amount is unknown: no amount validation.
+            amount_try = round(amount_currency * float(rate), 2) if amount_currency is not None and rate else None
         return matching.SourceRecord(
             system=matching.PUSULA,
             record_id=record_id,
@@ -116,9 +135,11 @@ class PusulaClient:
             direction=direction,
             type_id=type_id,
             unit_id=unit_id,
-            amount_try=float(amount) if amount is not None else None,
+            amount_try=amount_try,
             identity=identity,
             ettn=ettn,
             invalid_reason=reason,
             document_kind=document_kind,
+            currency=currency,
+            amount_currency=amount_currency,
         )

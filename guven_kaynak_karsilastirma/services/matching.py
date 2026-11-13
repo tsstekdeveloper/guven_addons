@@ -105,6 +105,8 @@ class SourceRecord:
     ettn: str = None
     invalid_reason: str = None
     document_kind: int = None
+    currency: str = None              # set only for non-TL documents
+    amount_currency: float = None     # document-currency amount behind amount_try
 
     @property
     def is_valid(self):

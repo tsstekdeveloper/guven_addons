@@ -72,6 +72,9 @@ PUSULA_TYPES = [(str(k), v) for k, v in sorted(matching.PUSULA_TYPE_NAMES.items(
 CEREBRUM_TYPES = [(str(k), v) for k, v in sorted(matching.CEREBRUM_TYPE_NAMES.items())]
 
 _MATCH_VALUE = {True: 'match', False: 'mismatch'}
+# Optional keys a part may omit from its signature; reset whenever the part
+# is rewritten so a document that stops being foreign-currency is cleaned.
+_PART_DEFAULTS = {'pusula': {'pusula_currency': False, 'pusula_amount_currency': 0.0}}
 _RETRYABLE = (psycopg2.errors.SerializationFailure, psycopg2.errors.DeadlockDetected)
 
 
@@ -152,6 +155,8 @@ class GuvenKaynakKarsilastirma(models.Model):
     pusula_document_kind = fields.Integer(string='Pusula Evrak Tipi')
     pusula_other_company = fields.Boolean(string='Pusula: Başka Şirkette Var')
     pusula_candidates_note = fields.Char(string='Pusula Adayları')
+    pusula_currency = fields.Char(string='Pusula Para Birimi', help="Yalnızca dövizli faturalarda dolu.")
+    pusula_amount_currency = fields.Float(string='Pusula Tutarı (Döviz)', digits=(16, 2))
     pusula_signature = fields.Char(string='Pusula İmzası', readonly=True)
 
     # --- Cerebrum ---
@@ -523,6 +528,11 @@ class GuvenKaynakKarsilastirma(models.Model):
         if prefix == matching.PUSULA:
             vals['pusula_ettn_match'] = _MATCH_VALUE.get(verdict.ettn_match, False)
             vals['pusula_document_kind'] = (record.document_kind or 0) if record else 0
+            # Only foreign-currency documents add these keys, so the signature
+            # of every TL row stays the same and no mass rewrite follows.
+            if record and record.currency:
+                vals['pusula_currency'] = record.currency
+                vals['pusula_amount_currency'] = record.amount_currency or 0.0
         return vals
 
     def _apply_month(self, invoices, snapshots, scopes, pusula_index, cerebrum_index, commit):
@@ -560,6 +570,7 @@ class GuvenKaynakKarsilastirma(models.Model):
                 vals.update(snapshot, gib_signature=gib_sig)
             for prefix, old_sig in ((matching.PUSULA, old_pusula), (matching.CEREBRUM, old_cerebrum)):
                 if prefix in parts and parts[prefix][1] != old_sig:
+                    vals.update(_PART_DEFAULTS.get(prefix, {}))
                     vals.update(parts[prefix][0])
                     vals[prefix + '_signature'] = parts[prefix][1]
             if vals:
