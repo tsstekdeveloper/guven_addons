@@ -108,6 +108,7 @@ class SourceRecord:
     currency: str = None              # set only for non-TL documents
     amount_currency: float = None     # document-currency amount behind amount_try
     amount_payable_try: float = None  # after withholding, when the source knows it
+    amount_alternatives: tuple = ()   # other tax-inclusive TL totals the source may mean
 
     @property
     def is_valid(self):
@@ -137,6 +138,7 @@ class SourceVerdict:
     found_in_other_company: bool = False
     amount_diff: float = None
     amount_basis: str = None          # 'inclusive' or 'payable'
+    source_amount: float = None       # the source total the diff was computed from
     identity_match: bool = None
     ettn_match: bool = None
 
@@ -191,22 +193,27 @@ def judge(invoice, index, scope_units):
         out_of_scope = [c for c in candidates if c.unit_id not in scope_units]
         found_elsewhere = _decide(invoice.date, out_of_scope)[0] == FOUND
 
-    amount_diff = amount_basis = identity_match = ettn_match = None
+    amount_diff = amount_basis = source_amount = identity_match = ettn_match = None
     if record is not None:
-        if record.amount_try is not None:
-            # Cerebrum stores the payable amount on withholding invoices (44 of
-            # 46 incoming differences in the October 2026 dry run), so the
-            # closer of the two GİB totals is the comparison basis.
-            # Pusula derives a payable amount itself when the header carries a
-            # withholding rate (type 4 sales returns).
-            options = [
-                (round(ours - total, 2), 'inclusive' if ours_basis == gib_basis == 'inclusive' else 'payable')
-                for ours, ours_basis in ((record.amount_try, 'inclusive'), (record.amount_payable_try, 'payable'))
-                for total, gib_basis in ((invoice.amount_try, 'inclusive'), (invoice.payable_amount_try, 'payable'))
-                if ours is not None and total is not None
-            ]
-            if options:
-                amount_diff, amount_basis = min(options, key=lambda o: abs(o[0]))
+        # Every source total is compared with both GİB totals and the closest
+        # pair wins; ties keep the first, i.e. the primary inclusive amount.
+        # - Cerebrum stores the payable amount on withholding invoices (44 of
+        #   46 incoming differences in the October 2026 dry run).
+        # - Pusula derives a payable amount when the header carries a
+        #   withholding rate (type 4 sales returns).
+        # - Pusula type 13 offers alternative totals (header, all children):
+        #   no single one is right on every invoice.
+        ours_options = [(record.amount_try, 'inclusive')]
+        ours_options += [(alternative, 'inclusive') for alternative in record.amount_alternatives]
+        ours_options.append((record.amount_payable_try, 'payable'))
+        options = [
+            (round(ours - total, 2), 'inclusive' if ours_basis == gib_basis == 'inclusive' else 'payable', ours)
+            for ours, ours_basis in ours_options
+            for total, gib_basis in ((invoice.amount_try, 'inclusive'), (invoice.payable_amount_try, 'payable'))
+            if ours is not None and total is not None
+        ]
+        if options:
+            amount_diff, amount_basis, source_amount = min(options, key=lambda o: abs(o[0]))
         if invoice.direction == IN:
             ours, theirs = normalize_identity(record.identity), normalize_identity(invoice.counterparty_identity)
             if ours and theirs:
@@ -222,6 +229,7 @@ def judge(invoice, index, scope_units):
         found_in_other_company=found_elsewhere,
         amount_diff=amount_diff,
         amount_basis=amount_basis,
+        source_amount=source_amount,
         identity_match=identity_match,
         ettn_match=ettn_match,
     )

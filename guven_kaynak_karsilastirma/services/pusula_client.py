@@ -7,12 +7,13 @@ replica, so reads go through indexes in bounded batches.
 
 TL amount of an invoice (all rules measured on prod, 2026-11-13):
 
-1. Type 13 institution invoices with valid (State = 1) type 9 children:
-   the TL line sum (FaturaKalem.KdvliTutar) of those children. The type 13
-   header is unreliable: on 54 e-faturas it held a single provision's
-   amount (14,000 of 472,000), and on foreign-currency ones it may be TL or
-   currency. The children line sum matched GİB on 2,000 of 2,000 sampled
-   rows that already matched, and fixed 86 of the 136 that did not.
+1. Type 13 institution invoices: no single total is right everywhere, so
+   the record offers several and matching keeps the one closest to GİB.
+   Primary: the TL line sum (FaturaKalem.KdvliTutar) of the valid
+   (State = 1) type 9 children; it fixed 54 e-faturas whose header held a
+   single provision (14,000 of 472,000). Alternatives: the header (right on
+   14 e-faturas whose children lines cover only part of the invoice) and
+   the line sum of all children (3 invoices with cancelled children).
 2. Other foreign-currency invoices (ParaBirimiId <> 1) with lines of their
    own: the TL line sum. Type 8 headers are in the document currency
    (8,936 USD/EUR patient invoices looked ~98 % short before this).
@@ -52,12 +53,17 @@ WHERE K.FaturaId IN ({placeholders}) AND K.State <> 0
 GROUP BY K.FaturaId
 """
 
-# Line totals of the valid children of type 13 invoices (IX_Fatura_ParentFatura).
+# Children line totals of type 13 invoices (IX_Fatura_ParentFatura):
+# valid children (TL, currency, line count) and all children (TL).
 _SELECT_CHILD_TOTALS = """
-SELECT C.ParentFaturaId, SUM(K.KdvliTutar), SUM(K.KdvliTutarDoviz), COUNT(*)
+SELECT C.ParentFaturaId,
+       SUM(CASE WHEN C.State = 1 THEN K.KdvliTutar END),
+       SUM(CASE WHEN C.State = 1 THEN K.KdvliTutarDoviz END),
+       SUM(CASE WHEN C.State = 1 THEN 1 ELSE 0 END),
+       SUM(K.KdvliTutar)
 FROM Finans.Fatura C WITH (NOLOCK)
 JOIN Finans.FaturaKalem K WITH (NOLOCK) ON K.FaturaId = C.Id AND K.State <> 0
-WHERE C.ParentFaturaId IN ({placeholders}) AND C.State = 1
+WHERE C.ParentFaturaId IN ({placeholders})
 GROUP BY C.ParentFaturaId
 """
 
@@ -160,7 +166,11 @@ class PusulaClient:
         return records
 
     def _to_record(self, row, lines=None, children=None):
-        """`lines` / `children`: (TL sum, currency sum, line count) or None."""
+        """`lines`: (TL sum, currency sum, line count) of the invoice's own lines.
+
+        `children`: (valid TL sum, valid currency sum, valid line count,
+        all-children TL sum) of a type 13 invoice. Either may be None.
+        """
         (record_id, type_id, document_kind, state, unit_id, number, date, amount,
          identity, ettn, currency_id, net, vat, withholding_num, withholding_den) = row
         if type_id == PROVISION_TYPE:
@@ -179,10 +189,17 @@ class PusulaClient:
             currency = CURRENCY_CODES.get(currency_id, 'PB%s' % currency_id)
         amount_try = _money(amount)
         amount_currency = amount_payable = None
-        totals = children if type_id == INSTITUTION_TYPE else (lines if currency else None)
-        if totals and totals[2]:
-            amount_try = _money(totals[0])
-            amount_currency = _money(totals[1]) if currency else None
+        alternatives = ()
+        if type_id == INSTITUTION_TYPE:
+            header = amount_try
+            if children and children[2]:
+                amount_try = _money(children[0])
+                amount_currency = _money(children[1]) if currency else None
+            candidates = (header, _money(children[3]) if children else None)
+            alternatives = tuple(dict.fromkeys(a for a in candidates if a is not None and a != amount_try))
+        elif currency and lines and lines[2]:
+            amount_try = _money(lines[0])
+            amount_currency = _money(lines[1])
         elif not currency and withholding_num and withholding_den and net is not None and vat is not None:
             # Header amounts are TL only on TL invoices; withholding is
             # derived from them alone.
@@ -204,4 +221,5 @@ class PusulaClient:
             currency=currency,
             amount_currency=amount_currency,
             amount_payable_try=amount_payable,
+            amount_alternatives=alternatives,
         )

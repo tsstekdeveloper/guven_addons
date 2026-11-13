@@ -130,14 +130,29 @@ class TestRowMapping(BaseCase):
     def test_pusula_institution_invoice_uses_children_lines(self):
         client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
         # Real case G022026000052192: header 14,000 (one provision), 38 children total 472,000.
-        tl = client._to_record(self._row(30, 13, 14000.0), children=(472000.0, 0.0, 38))
-        self.assertEqual((tl.amount_try, tl.currency), (472000.0, None))
+        tl = client._to_record(self._row(30, 13, 14000.0), children=(472000.0, 0.0, 38, 472000.0))
+        self.assertEqual((tl.amount_try, tl.currency, tl.amount_alternatives), (472000.0, None, (14000.0,)))
         # Foreign-currency type 13: children lines carry TL and currency.
-        eur = client._to_record(self._row(31, 13, 2566562.35, 3), children=(2566562.11, 46001.59, 12))
+        eur = client._to_record(self._row(31, 13, 2566562.35, 3), children=(2566562.11, 46001.59, 12, 2566562.11))
         self.assertEqual((eur.amount_try, eur.currency, eur.amount_currency), (2566562.11, 'EUR', 46001.59))
+        self.assertEqual(eur.amount_alternatives, (2566562.35,))
+        # Cancelled children add a third candidate.
+        mixed = client._to_record(self._row(33, 13, 900.0), children=(700.0, 0.0, 5, 1000.0))
+        self.assertEqual((mixed.amount_try, mixed.amount_alternatives), (700.0, (900.0, 1000.0)))
         # Own lines are ignored for type 13; no children keeps the header.
         alone = client._to_record(self._row(32, 13, 500.0, 2), lines=(1.0, 1.0, 1), children=None)
-        self.assertEqual((alone.amount_try, alone.amount_currency), (500.0, None))
+        self.assertEqual((alone.amount_try, alone.amount_currency, alone.amount_alternatives), (500.0, None, ()))
+
+    def test_alternative_total_closest_to_gib_wins(self):
+        # Real case: header 8,138.08 = GİB, while 39 children lines give only 6,715.99.
+        record = m.SourceRecord(system=m.PUSULA, record_id=3, numbers=("G02X",), date=D, direction=m.OUT, type_id=13,
+                                unit_id=1, amount_try=6715.99, amount_alternatives=(8138.08,))
+        v = m.judge(inv(number="G02X", amount=8138.08, payable=8138.08), m.build_index([record]), {1})
+        self.assertEqual((m.amount_level(v), v.source_amount, v.amount_basis), (m.AMOUNT_EXACT, 8138.08, 'inclusive'))
+        # The primary amount keeps winning ties, so matching rows do not move.
+        record = m.SourceRecord(system=m.PUSULA, record_id=4, numbers=("G02Y",), date=D, direction=m.OUT, type_id=13,
+                                unit_id=1, amount_try=500.0, amount_alternatives=(500.0,))
+        self.assertEqual(m.judge(inv(number="G02Y", amount=500.0), m.build_index([record]), {1}).source_amount, 500.0)
 
     def test_pusula_withholding_gives_payable_amount(self):
         client = pusula_client.PusulaClient("h", 1, "d", "u", "p")
@@ -153,6 +168,7 @@ class TestRowMapping(BaseCase):
                                 unit_id=1, amount_try=109.13, amount_payable_try=104.17)
         v = m.judge(inv(number="GNS1", direction=m.IN, amount=104.17, payable=104.17), m.build_index([record]), {1})
         self.assertEqual((m.amount_level(v), v.amount_basis, v.amount_diff), (m.AMOUNT_EXACT, 'payable', 0.0))
+        self.assertEqual(v.source_amount, 104.17, "the stored amount must be the one the diff came from")
         # Equal GİB totals keep the inclusive basis, so existing signatures stay put.
         plain = m.SourceRecord(system=m.PUSULA, record_id=2, numbers=("X1",), date=D, direction=m.OUT, type_id=8,
                                unit_id=1, amount_try=118.0)

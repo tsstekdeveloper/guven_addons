@@ -1,6 +1,6 @@
 {
     'name': 'Güven HBYS Sistemleri Karşılaştırması',
-    'version': '19.0.1.0.4',
+    'version': '19.0.1.0.5',
     'category': 'Accounting',
     'summary': 'İzibiz faturalarını Pusula ve Cerebrum kayıtlarıyla karşılaştırır',
     'description': """

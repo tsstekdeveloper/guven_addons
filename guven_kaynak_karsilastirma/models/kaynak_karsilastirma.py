@@ -144,7 +144,11 @@ class GuvenKaynakKarsilastirma(models.Model):
     pusula_date = fields.Date(string='Pusula Tarihi')
     pusula_type = fields.Selection(PUSULA_TYPES, string='Pusula Fatura Tipi')
     pusula_unit = fields.Integer(string='Pusula Şube')
-    pusula_amount = fields.Float(string='Pusula Tutarı (TL)', digits=(16, 2))
+    pusula_amount = fields.Float(
+        string='Pusula Tutarı (TL)', digits=(16, 2),
+        help="Karşılaştırmada kullanılan Pusula tutarı. Tevkifatlı faturada ödenecek tutar, "
+             "kurum faturasında GİB'e en yakın toplam (alt kayıtlar veya başlık).",
+    )
     pusula_vkn = fields.Char(string='Pusula VKN/TCKN')
     pusula_amount_diff = fields.Float(string='Pusula Tutar Farkı', digits=(16, 2))
     pusula_amount_level = fields.Selection(AMOUNT_LEVEL, string='Pusula Tutar Uyumu')
@@ -515,7 +519,12 @@ class GuvenKaynakKarsilastirma(models.Model):
             prefix + '_date': record.date if record else False,
             prefix + '_type': str(record.type_id) if record else False,
             prefix + '_unit': (record.unit_id or 0) if record else 0,
-            prefix + '_amount': record.amount_try if record and record.amount_try is not None else 0.0,
+            # The total the difference was computed from (e.g. the payable
+            # amount of a withholding invoice), so amount and diff agree.
+            prefix + '_amount': (
+                verdict.source_amount if verdict.source_amount is not None
+                else (record.amount_try if record and record.amount_try is not None else 0.0)
+            ) if record else 0.0,
             prefix + '_vkn': (record.identity or False) if record else False,
             prefix + '_amount_diff': verdict.amount_diff if verdict.amount_diff is not None else 0.0,
             prefix + '_amount_level': matching.amount_level(verdict) or False,
